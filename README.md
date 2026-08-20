@@ -1,6 +1,6 @@
-# Cloro — Founder's Associate Portfolio Demos
+# AI-native Portfolio Demo Projects
 
-Five self-contained demo projects built with synthetic/mock data (no real Cloro data used).
+Five self-contained demo projects built with synthetic/mock data.
 Each project lives in its own subdirectory with a README and runnable code.
 
 | # | Project | Stack | What it shows |
