@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<title>Contractor Lifecycle & SLA Tracker</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --navy:#1F3864;
+    --navy-dark:#152648;
+    --grey:#404040;
+    --grey-muted:#6B7280;
+    --bg:#FFFFFF;
+    --card-bg:#F4F5F7;
+    --border:#E1E4E9;
+    --red:#C0392B;
+    --red-bg:#FBEAE8;
+    --amber:#B9770E;
+    --amber-bg:#FDF3E2;
+    --green:#1E7145;
+    --green-bg:#E9F5EE;
+    --radius:10px;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--grey);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    font-size:14px;
+    line-height:1.5;
+  }
+  h1,h2,h3{margin:0;color:var(--navy);}
+  p{margin:0;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 32px;border-bottom:1px solid var(--border);
+    background:var(--bg);flex-wrap:wrap;gap:12px;
+  }
+  .topbar-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .btn{
+    padding:9px 16px;border-radius:6px;border:1px solid var(--navy);
+    background:var(--navy);color:#fff;font-size:13px;font-weight:600;
+    transition:background .15s ease,transform .1s ease;
+  }
+  .btn:hover{background:var(--navy-dark);}
+  .btn:active{transform:translateY(1px);}
+  .btn-secondary{
+    background:#fff;color:var(--navy);border:1px solid var(--navy);
+  }
+  .btn-secondary:hover{background:#EEF2F8;}
+  .source-label{
+    font-size:12px;font-weight:600;color:var(--grey-muted);
+    padding:6px 12px;border-radius:20px;background:var(--card-bg);
+    border:1px solid var(--border);white-space:nowrap;
+  }
+  .source-label.imported{color:var(--navy);background:#EAF0FA;border-color:#C7D6EC;}
+  .source-label.syncing{color:var(--amber);background:var(--amber-bg);border-color:#F0DBAE;}
+  .source-label.error{color:var(--red);background:var(--red-bg);border-color:#F0C6C1;}
+  .source-label.offline{color:var(--grey-muted);}
+
+  /* ---------- Header ---------- */
+  .header{padding:28px 32px 8px;}
+  .header h1{font-size:26px;font-weight:700;letter-spacing:-0.2px;}
+  .header .subtitle{margin-top:6px;font-size:12.5px;color:var(--grey-muted);}
+
+  .import-error{
+    margin:0 32px 4px;padding:10px 14px;border-radius:6px;
+    background:var(--red-bg);color:var(--red);font-size:12.5px;font-weight:600;
+    border:1px solid #F0C6C1;
+  }
+  .import-error[hidden]{display:none;}
+
+  /* ---------- Main layout ---------- */
+  .main{padding:20px 32px 48px;}
+
+  .kpi-row{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;
+  }
+  .kpi-card{
+    background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 20px 16px;position:relative;overflow:hidden;
+  }
+  .kpi-card::after{
+    content:"";position:absolute;left:0;bottom:0;width:100%;height:3px;background:var(--navy);
+  }
+  .kpi-label{
+    font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--grey-muted);margin-bottom:8px;
+  }
+  .kpi-value{font-size:30px;font-weight:700;color:var(--navy);letter-spacing:-0.5px;}
+  .kpi-sub{font-size:11.5px;color:var(--grey-muted);margin-top:4px;}
+
+  .dashboard-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;
+  }
+  .dashboard-col{display:flex;flex-direction:column;gap:20px;min-width:0;}
+
+  /* ---------- Filter bar ---------- */
+  .filter-bar{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:-4px 0 20px;
+  }
+  .filter-bar[hidden]{display:none;}
+  .filter-bar-label{font-size:11.5px;font-weight:700;color:var(--grey-muted);text-transform:uppercase;letter-spacing:0.04em;}
+  .filter-chip{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+    color:var(--navy);background:#EAF0FA;border:1px solid #C7D6EC;
+    padding:5px 8px 5px 12px;border-radius:20px;
+  }
+  .filter-chip button{
+    background:none;border:none;color:var(--navy);font-size:14px;line-height:1;
+    padding:0 2px;font-weight:700;
+  }
+  .filter-chip button:hover{color:var(--red);}
+  .filter-clear-all{
+    font-size:12px;font-weight:600;color:var(--grey-muted);background:none;border:none;
+    text-decoration:underline;padding:4px 2px;
+  }
+  .filter-clear-all:hover{color:var(--navy);}
+
+  /* ---------- US state map ---------- */
+  .state-tile{cursor:pointer;}
+  .state-tile rect{transition:opacity .1s ease,stroke-width .1s ease;}
+  .state-tile:hover rect{stroke:var(--navy);stroke-width:2;}
+  .state-tile.state-selected rect{stroke:var(--amber);stroke-width:2.5;}
+  .state-label{font-size:9.5px;font-weight:700;pointer-events:none;}
+  .state-count{font-size:7.5px;font-weight:600;pointer-events:none;}
+  .bucket-bar{cursor:pointer;}
+
+  /* ---------- HR sub-charts ---------- */
+  .subchart{margin-bottom:18px;}
+  .subchart:last-child{margin-bottom:0;}
+  .subchart-title{
+    font-size:11px;font-weight:700;color:var(--grey-muted);text-transform:uppercase;
+    letter-spacing:0.04em;margin-bottom:8px;
+  }
+  .stat-bar-label{font-size:11px;font-weight:600;fill:var(--grey);}
+  .stat-bar-value{font-size:11.5px;font-weight:700;fill:var(--navy);}
+
+  .card{
+    background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px 22px 22px;display:flex;flex-direction:column;min-width:0;
+  }
+  .card-head{margin-bottom:14px;}
+  .card-head h2{font-size:15.5px;font-weight:700;}
+  .card-head .card-sub{font-size:11.5px;color:var(--grey-muted);margin-top:3px;}
+  .card-body{flex:1;min-width:0;}
+
+  .placeholder{
+    padding:28px 12px;text-align:center;color:var(--grey-muted);font-size:12.5px;
+    border:1px dashed var(--border);border-radius:8px;background:#fff;
+  }
+
+  .callout{
+    margin-top:14px;padding:10px 14px;border-radius:6px;font-size:12.5px;
+    background:#fff;border-left:3px solid var(--amber);color:var(--grey);
+  }
+  .callout strong{color:var(--navy);}
+  .callout.callout-neutral{border-left-color:var(--navy);}
+
+  /* ---------- Charts (SVG) ---------- */
+  .chart-bar-label{font-size:11.5px;font-weight:600;fill:var(--grey);}
+  .chart-bar-value{font-size:11.5px;font-weight:700;fill:var(--navy);}
+  .chart-axis-label{font-size:10.5px;fill:var(--grey-muted);}
+  .chart-grid{stroke:var(--border);stroke-width:1;}
+  .chart-line{fill:none;stroke:var(--navy);stroke-width:2.25;}
+  .chart-dot{fill:var(--navy);cursor:pointer;}
+  .chart-dot-dip{fill:var(--red);cursor:pointer;}
+  .vbar-label{font-size:11px;fill:var(--grey);font-weight:600;}
+  .vbar-value{font-size:12px;fill:var(--navy);font-weight:700;}
+  .gauge-bar{cursor:pointer;}
+  .gauge-bar:hover rect{opacity:0.88;}
+  .filter-el{cursor:pointer;}
+  .filter-el:hover rect{opacity:0.85;}
+  .chart-dot,.chart-dot-dip{transition:r .1s ease;}
+
+  #chartTooltip{
+    position:fixed;pointer-events:none;background:var(--navy-dark);color:#fff;
+    font-size:11.5px;padding:6px 10px;border-radius:5px;z-index:60;
+    transform:translate(-50%,-115%);white-space:nowrap;opacity:0;transition:opacity .1s ease;
+  }
+  #chartTooltip.visible{opacity:1;}
+
+  #gaugePopup{
+    position:fixed;pointer-events:none;z-index:65;background:#fff;
+    border:1px solid var(--border);border-radius:10px;
+    box-shadow:0 10px 28px rgba(20,30,45,0.2);padding:10px 16px 12px;
+    width:200px;text-align:center;opacity:0;transition:opacity .12s ease;
+  }
+  #gaugePopup.visible{opacity:1;}
+  #gaugePopup svg{display:block;margin:0 auto;}
+  .gauge-title{font-size:11px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:0.03em;}
+  .gauge-value{font-size:22px;font-weight:800;color:var(--navy);margin-top:-8px;}
+  .gauge-sub{font-size:11px;color:var(--grey-muted);margin-top:2px;line-height:1.4;}
+
+  /* ---------- Tables ---------- */
+  .table-scroll{overflow-x:auto;}
+  table.data-table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;border-radius:8px;overflow:hidden;}
+  table.data-table th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;
+    color:var(--grey-muted);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--border);
+    white-space:nowrap;user-select:none;
+  }
+  table.data-table th[data-key]{cursor:pointer;}
+  table.data-table th[data-key]:hover{color:var(--navy);}
+  table.data-table th .sort-arrow{font-size:9px;margin-left:3px;color:var(--navy);}
+  table.data-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+  table.data-table tbody tr:last-child td{border-bottom:none;}
+  table.data-table tbody tr.row-red{background:var(--red-bg);}
+  table.data-table tbody tr.row-yellow{background:var(--amber-bg);}
+  table.data-table tbody tr.row-green{background:transparent;}
+  .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  .status-dot.red{background:var(--red);}
+  .status-dot.yellow{background:var(--amber);}
+  .status-dot.green{background:var(--green);}
+
+  tr.disc-row td:first-child{border-left:3px solid var(--red);}
+  .warn-icon{color:var(--red);margin-right:5px;font-weight:700;}
+
+  .table-note{font-size:11px;color:var(--grey-muted);margin-top:8px;}
+
+  /* ---------- Mapping modal ---------- */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(20,30,45,0.55);z-index:100;
+    display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;
+  }
+  .modal-backdrop[hidden]{display:none;}
+  .modal{
+    background:#fff;border-radius:12px;max-width:680px;width:100%;padding:26px 28px 24px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.25);
+  }
+  .modal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+  .modal-head h2{font-size:18px;}
+  .modal-close{background:none;border:none;font-size:20px;color:var(--grey-muted);line-height:1;padding:4px;}
+  .modal-close:hover{color:var(--navy);}
+  .map-intro{font-size:12.5px;color:var(--grey);margin-bottom:10px;}
+  .map-detected{font-size:11.5px;color:var(--grey-muted);margin-bottom:16px;}
+  .chip{
+    display:inline-block;background:var(--card-bg);border:1px solid var(--border);
+    padding:2px 8px;border-radius:20px;margin:2px 3px 2px 0;font-size:11px;
+  }
+  .map-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:16px;}
+  .map-row{display:flex;flex-direction:column;gap:5px;}
+  .map-label{font-size:12px;font-weight:600;color:var(--grey);}
+  .map-label .req{color:var(--red);}
+  .map-select{
+    padding:7px 8px;border-radius:6px;border:1px solid var(--border);font-size:12.5px;
+    background:#fff;color:var(--grey);
+  }
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+
+  @media (max-width:900px){
+    .dashboard-grid{grid-template-columns:1fr;}
+    .map-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width:700px){
+    .kpi-row{grid-template-columns:1fr 1fr;}
+    .header,.main{padding-left:18px;padding-right:18px;}
+    .topbar{padding-left:18px;padding-right:18px;}
+  }
+  @media (max-width:460px){
+    .kpi-row{grid-template-columns:1fr;}
+  }
+  body.modal-open{overflow:hidden;}
+</style>
+
+<div class="topbar">
+  <div class="topbar-actions">
+    <button class="btn" id="btnImport" type="button">Import Data</button>
+    <button class="btn btn-secondary" id="btnReset" type="button">Reset to Demo Data</button>
+    <input type="file" id="fileInput" accept=".csv,.json,text/csv,application/json" style="display:none">
+  </div>
+  <div class="source-label" id="sourceLabel">Viewing: Demo Data</div>
+</div>
+
+<div id="importErrorBox" class="import-error" hidden></div>
+
+<div class="header">
+  <h1>Contractor Lifecycle &amp; SLA Tracker</h1>
+  <p class="subtitle">Demo dashboard — sample data for illustration purposes only.</p>
+</div>
+
+<div class="main">
+  <div class="kpi-row" id="kpiRow"></div>
+  <div class="filter-bar" id="filterBar" hidden></div>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-col">
+      <section class="card">
+        <div class="card-head">
+          <h2>Onboarding Lifecycle Funnel</h2>
+          <div class="card-sub">Average days spent per stage, Request Received → Go-Live</div>
+        </div>
+        <div class="card-body" id="funnelContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Contractor Locations by State</h2>
+          <div class="card-sub">Click a state to filter the dashboard</div>
+        </div>
+        <div class="card-body" id="mapContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>SLA / KPI / CPI Compliance Trend</h2>
+          <div class="card-sub">% SLA compliance, trailing 12 months</div>
+        </div>
+        <div class="card-body" id="slaContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Contractor Demographics</h2>
+          <div class="card-sub">Age, gender, and pay band breakdown</div>
+        </div>
+        <div class="card-body" id="demographicsContent"></div>
+      </section>
+    </div>
+
+    <div class="dashboard-col">
+      <section class="card">
+        <div class="card-head">
+          <h2>Contract Expiration Radar</h2>
+          <div class="card-sub">Upcoming contract end dates by vendor — click a bar to filter</div>
+        </div>
+        <div class="card-body" id="radarContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Data Discrepancy Flag List</h2>
+          <div class="card-sub">Records where status disagrees across source systems</div>
+        </div>
+        <div class="card-body" id="discContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Contractor Turnover Trend</h2>
+          <div class="card-sub">% of contractors offboarded, trailing 12 months</div>
+        </div>
+        <div class="card-body" id="turnoverContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Tenure Report</h2>
+          <div class="card-sub">How long contractors have been in the assignment</div>
+        </div>
+        <div class="card-body" id="tenureContent"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="header">
+    <h2 style="font-size:19px;">Bottleneck Insights</h2>
+    <p class="subtitle">Four operational bottlenecks identified in the current data, with root causes and recommended actions.</p>
+  </div>
+  <div class="dashboard-grid">
+    <div class="dashboard-col">
+      <section class="card">
+        <div class="card-head">
+          <h2>Finding 1 — Onboarding Stage Bottleneck</h2>
+          <div class="card-sub">Average days per onboarding stage — click a bar to filter</div>
+        </div>
+        <div class="card-body" id="bnFunnelContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Finding 2 — Renewal Pipeline Risk</h2>
+          <div class="card-sub">Contracts expiring within 30 days, by renewal status</div>
+        </div>
+        <div class="card-body" id="bnRenewalContent"></div>
+      </section>
+    </div>
+
+    <div class="dashboard-col">
+      <section class="card">
+        <div class="card-head">
+          <h2>Finding 3 — Discrepancy Type Concentration</h2>
+          <div class="card-sub">Flagged records, grouped by mismatch type</div>
+        </div>
+        <div class="card-body" id="bnDiscContent"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Finding 4 — SLA / Turnover Co-Event</h2>
+          <div class="card-sub">Compliance and turnover trend, trailing 12 months</div>
+        </div>
+        <div class="card-body" id="bnCoEventContent"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="chartTooltip"></div>
+<div id="gaugePopup"></div>
+
+<div class="modal-backdrop" id="mappingModal" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Map Your Columns</h2>
+      <button class="modal-close" id="mappingClose" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div id="mappingBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="mappingCancel" type="button">Cancel</button>
+      <button class="btn" id="mappingConfirm" type="button">Confirm Mapping</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  'use strict';
+
+  /* ============================================================
+     SUPABASE CONFIG
+  ============================================================ */
+  var SUPABASE_URL = 'https://ohgabptearcsrwogbzhl.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_izkxgyS58Cmjt2rPozdE1Q_Z9PPnf2Y';
+  var sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    : null;
+
+  /* ============================================================
+     STATE
+  ============================================================ */
+  var state = {
+    source: 'demo',
+    syncStatus: sb ? 'idle' : 'offline',
+    contractors: [],
+    slaTrend: [],
+    pendingParsed: null,
+    radarSort: { key: 'daysUntilExpiration', dir: 'asc' },
+    filters: { state: null, bucket: null, month: null, ageBucket: null, gender: null, payBand: null, tenureBucket: null, funnelStage: null, renewalStatus: null, discType: null }
+  };
+
+  /* ============================================================
+     US STATE GRID (row/col layout for the tile map)
+     Source: geofacet us_state_grid2 (8 rows x 12 cols)
+  ============================================================ */
+  var US_STATE_GRID = [
+    { code:'AL', name:'Alabama', row:6, col:7 }, { code:'AK', name:'Alaska', row:1, col:1 },
+    { code:'AZ', name:'Arizona', row:6, col:2 }, { code:'AR', name:'Arkansas', row:6, col:5 },
+    { code:'CA', name:'California', row:6, col:1 }, { code:'CO', name:'Colorado', row:5, col:3 },
+    { code:'CT', name:'Connecticut', row:2, col:10 }, { code:'DE', name:'Delaware', row:4, col:11 },
+    { code:'FL', name:'Florida', row:7, col:9 }, { code:'GA', name:'Georgia', row:6, col:8 },
+    { code:'HI', name:'Hawaii', row:8, col:1 }, { code:'ID', name:'Idaho', row:4, col:2 },
+    { code:'IL', name:'Illinois', row:4, col:6 }, { code:'IN', name:'Indiana', row:4, col:7 },
+    { code:'IA', name:'Iowa', row:4, col:5 }, { code:'KS', name:'Kansas', row:5, col:4 },
+    { code:'KY', name:'Kentucky', row:5, col:7 }, { code:'LA', name:'Louisiana', row:7, col:5 },
+    { code:'ME', name:'Maine', row:1, col:12 }, { code:'MD', name:'Maryland', row:5, col:10 },
+    { code:'MA', name:'Massachusetts', row:2, col:11 }, { code:'MI', name:'Michigan', row:3, col:7 },
+    { code:'MN', name:'Minnesota', row:3, col:5 }, { code:'MS', name:'Mississippi', row:6, col:6 },
+    { code:'MO', name:'Missouri', row:5, col:5 }, { code:'MT', name:'Montana', row:3, col:2 },
+    { code:'NE', name:'Nebraska', row:4, col:4 }, { code:'NV', name:'Nevada', row:5, col:1 },
+    { code:'NH', name:'New Hampshire', row:1, col:11 }, { code:'NJ', name:'New Jersey', row:3, col:10 },
+    { code:'NM', name:'New Mexico', row:6, col:3 }, { code:'NY', name:'New York', row:2, col:9 },
+    { code:'NC', name:'North Carolina', row:5, col:9 }, { code:'ND', name:'North Dakota', row:3, col:3 },
+    { code:'OH', name:'Ohio', row:4, col:8 }, { code:'OK', name:'Oklahoma', row:6, col:4 },
+    { code:'OR', name:'Oregon', row:4, col:1 }, { code:'PA', name:'Pennsylvania', row:3, col:9 },
+    { code:'RI', name:'Rhode Island', row:3, col:11 }, { code:'SC', name:'South Carolina', row:6, col:9 },
+    { code:'SD', name:'South Dakota', row:3, col:4 }, { code:'TN', name:'Tennessee', row:5, col:6 },
+    { code:'TX', name:'Texas', row:7, col:4 }, { code:'UT', name:'Utah', row:5, col:2 },
+    { code:'VT', name:'Vermont', row:1, col:10 }, { code:'VA', name:'Virginia', row:4, col:9 },
+    { code:'WA', name:'Washington', row:3, col:1 }, { code:'WV', name:'West Virginia', row:5, col:8 },
+    { code:'WI', name:'Wisconsin', row:3, col:6 }, { code:'WY', name:'Wyoming', row:4, col:3 },
+    { code:'DC', name:'District of Columbia', row:4, col:10 }
+  ];
+  var STATE_NAME_TO_CODE = {};
+  US_STATE_GRID.forEach(function(s){ STATE_NAME_TO_CODE[s.name.toLowerCase()] = s.code; });
+  var STATE_CODE_SET = {};
+  US_STATE_GRID.forEach(function(s){ STATE_CODE_SET[s.code] = s.name; });
+
+  var MAP_FIELDS = [
+    { key:'name', label:'Contractor Name', required:true },
+    { key:'vendor', label:'Vendor / Staffing Partner', required:false },
+    { key:'state', label:'State / Location', required:false },
+    { key:'age', label:'Age', required:false },
+    { key:'gender', label:'Gender', required:false },
+    { key:'payBand', label:'Pay Band', required:false },
+    { key:'endDate', label:'Contract End Date', required:false },
+    { key:'systemAStatus', label:'System A Status (e.g. ServiceNow)', required:false },
+    { key:'systemBStatus', label:'System B Status (e.g. Beeline / Fieldglass)', required:false },
+    { key:'extensionStatus', label:'Extension Status', required:false },
+    { key:'requestReceived', label:'Onboarding: Request Received Date', required:false },
+    { key:'adCreated', label:'Onboarding: AD Profile Created Date', required:false },
+    { key:'accessGranted', label:'Onboarding: System Access Granted Date', required:false },
+    { key:'goLive', label:'Onboarding: Go-Live Date', required:false }
+  ];
+
+  /* ============================================================
+     UTILITIES
+  ============================================================ */
+  function escapeHtml(s){
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function addDays(d, days){
+    var r = new Date(d.getTime());
+    r.setTime(r.getTime() + days * 86400000);
+    return r;
+  }
+  function toISODate(d){
+    if(!(d instanceof Date) || isNaN(d.getTime())) return null;
+    var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+  }
+  function fmtDate(d){
+    if(!d || isNaN(d.getTime && d.getTime())) return '—';
+    try{
+      return d.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+    }catch(e){ return '—'; }
+  }
+  function safeNum(n, digits){
+    if(n === null || n === undefined || isNaN(n)) return null;
+    return Number(n.toFixed(digits === undefined ? 1 : digits));
+  }
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function shuffleArr(arr, rng){
+    for(var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor((rng ? rng() : Math.random()) * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+  }
+  function parseDateFlexible(v){
+    try{
+      if(v === null || v === undefined || v === '') return null;
+      if(v instanceof Date) return isNaN(v.getTime()) ? null : v;
+      var s = String(v).trim();
+      if(!s) return null;
+      var m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+      if(m){
+        var d1 = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        return isNaN(d1.getTime()) ? null : d1;
+      }
+      m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+      if(m){
+        var d2 = new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+        return isNaN(d2.getTime()) ? null : d2;
+      }
+      if(/^\d+(\.\d+)?$/.test(s)){
+        var num = Number(s);
+        if(num > 20000 && num < 80000){
+          var epoch = new Date(Date.UTC(1899, 11, 30));
+          var d3 = new Date(epoch.getTime() + num * 86400000);
+          return isNaN(d3.getTime()) ? null : d3;
+        }
+      }
+      var d4 = new Date(s);
+      return isNaN(d4.getTime()) ? null : d4;
+    }catch(err){ return null; }
+  }
+
+  /* ============================================================
+     DEMO DATA GENERATION
+  ============================================================ */
+  function genDemoData(){
+    var rng = mulberry32(42);
+    function rand(min, max){ return min + rng() * (max - min); }
+    function randInt(min, max){ return Math.floor(rand(min, max + 1)); }
+    function pick(arr){ return arr[Math.floor(rng() * arr.length)]; }
+
+    var FIRST = ['James','Maria','Robert','Linda','Michael','Susan','David','Karen','John','Nancy','Thomas','Betty','Charles','Sandra','Daniel','Ashley','Matthew','Emily','Andrew','Jessica','Joshua','Amanda','Kevin','Melissa','Brian','Stephanie','Ryan','Rebecca','Justin','Laura'];
+    var LAST = ['Anderson','Thompson','Martinez','Robinson','Clark','Rodriguez','Lewis','Walker','Hall','Young','Allen','King','Wright','Scott','Green','Baker','Adams','Nelson','Carter','Mitchell','Perez','Roberts','Turner','Phillips','Campbell','Parker','Evans','Edwards','Collins','Stewart'];
+    var VENDORS = [
+      { name:'TEKsystems', vms:'SAP Fieldglass' },
+      { name:'Insight Global', vms:'Beeline' },
+      { name:'Robert Half Technology', vms:'SAP Fieldglass' },
+      { name:'Apex Systems', vms:'Beeline' },
+      { name:'Randstad Technologies', vms:'SAP Fieldglass' },
+      { name:'Kelly OCG', vms:'Beeline' },
+      { name:'ManpowerGroup', vms:'SAP Fieldglass' },
+      { name:'Yoh Managed Solutions', vms:'Beeline' }
+    ];
+    var DISCREPANCY_TYPES = ['Status Mismatch','Termination Lag','Duplicate Active Record','End Date Conflict','Missing VMS Record'];
+    var STATE_WEIGHTS = [
+      ['CA',9],['TX',8],['NY',7],['FL',6],['IL',5],['PA',4],['OH',4],['GA',4],['NC',4],['NJ',4],
+      ['VA',4],['WA',4],['MA',3],['AZ',3],['CO',3],['MI',3],['MN',3],['TN',3],['MO',2],['MD',2],
+      ['IN',2],['WI',2],['CT',2],['OR',2]
+    ];
+    var stateWeightTotal = STATE_WEIGHTS.reduce(function(s,w){ return s + w[1]; }, 0);
+    function pickState(){
+      var r = rng() * stateWeightTotal, acc = 0;
+      for(var i = 0; i < STATE_WEIGHTS.length; i++){
+        acc += STATE_WEIGHTS[i][1];
+        if(r <= acc) return STATE_WEIGHTS[i][0];
+      }
+      return STATE_WEIGHTS[STATE_WEIGHTS.length - 1][0];
+    }
+    var PAY_BANDS = ['$60K–80K', '$80K–100K', '$100K–125K', '$125K–150K', '$150K+'];
+    var PAY_BAND_WEIGHTS = [2, 4, 5, 3, 1];
+    var payBandTotal = PAY_BAND_WEIGHTS.reduce(function(s,w){ return s + w; }, 0);
+    function pickPayBand(){
+      var r = rng() * payBandTotal, acc = 0;
+      for(var i = 0; i < PAY_BAND_WEIGHTS.length; i++){
+        acc += PAY_BAND_WEIGHTS[i];
+        if(r <= acc) return PAY_BANDS[i];
+      }
+      return PAY_BANDS[PAY_BANDS.length - 1];
+    }
+
+    var today = new Date(); today.setHours(0,0,0,0);
+    var N = 78;
+    var contractors = [];
+    var usedNames = {};
+
+    for(var i = 0; i < N; i++){
+      var first = pick(FIRST), last = pick(LAST);
+      var name = first + ' ' + last;
+      var guard = 0;
+      while(usedNames[name] && guard < 12){ first = pick(FIRST); last = pick(LAST); name = first + ' ' + last; guard++; }
+      usedNames[name] = true;
+      var vendor = pick(VENDORS);
+
+      var requestReceivedDaysAgo = randInt(70, 520);
+      var requestReceived = addDays(today, -requestReceivedDaysAgo);
+      var lag1 = rand(2, 10);
+      var lag2 = rand(3, 11);
+      var lag3 = rand(1, 9);
+      var adCreated = addDays(requestReceived, lag1);
+      var accessGranted = addDays(adCreated, lag2);
+      var goLive = addDays(accessGranted, lag3);
+
+      var bucketRoll = rng();
+      var daysOut;
+      if(bucketRoll < 0.13) daysOut = randInt(-3, 30);
+      else if(bucketRoll < 0.28) daysOut = randInt(31, 60);
+      else if(bucketRoll < 0.43) daysOut = randInt(61, 90);
+      else daysOut = randInt(91, 540);
+      var endDate = addDays(today, daysOut);
+
+      var extensionStatus;
+      if(daysOut <= 30) extensionStatus = pick(['Not Started','Not Started','In Process','Not Required']);
+      else if(daysOut <= 90) extensionStatus = pick(['Not Started','In Process','In Process','Not Required']);
+      else extensionStatus = pick(['Not Started','In Process','Not Required','Not Required']);
+
+      var baseStatus = daysOut < 0 ? 'Terminated' : 'Active';
+
+      contractors.push({
+        id: 'demo-' + i,
+        name: name,
+        vendor: vendor.name,
+        vms: vendor.vms,
+        state: pickState(),
+        age: randInt(23, 64),
+        gender: rng() < 0.51 ? 'Male' : 'Female',
+        payBand: pickPayBand(),
+        metricModifier: rand(-6, 6),
+        status: daysOut < 0 ? 'Pending Offboard' : 'Active',
+        endDate: endDate,
+        daysUntilExpiration: daysOut,
+        extensionStatus: extensionStatus,
+        requestReceived: requestReceived,
+        adCreated: adCreated,
+        accessGranted: accessGranted,
+        goLive: goLive,
+        systemAStatus: baseStatus,
+        systemBStatus: baseStatus,
+        discrepancyType: null,
+        flaggedDate: null
+      });
+    }
+
+    var discIdxPool = [];
+    for(var p = 0; p < N; p++) discIdxPool.push(p);
+    shuffleArr(discIdxPool, rng);
+    var discCount = 13;
+    for(var k = 0; k < discCount; k++){
+      var c = contractors[discIdxPool[k]];
+      var type = pick(DISCREPANCY_TYPES);
+      c.discrepancyType = type;
+      if(type === 'Status Mismatch'){ c.systemAStatus = 'Active'; c.systemBStatus = 'Terminated'; }
+      else if(type === 'Termination Lag'){ c.systemAStatus = 'Active'; c.systemBStatus = 'Pending Offboard'; }
+      else if(type === 'Duplicate Active Record'){ c.systemAStatus = 'Active'; c.systemBStatus = 'Active (Duplicate)'; }
+      else if(type === 'End Date Conflict'){ c.systemAStatus = 'Active — Ends ' + fmtDate(c.endDate); c.systemBStatus = 'Active — Ends ' + fmtDate(addDays(c.endDate, randInt(5,30))); }
+      else { c.systemAStatus = 'Active'; c.systemBStatus = 'No Record Found'; }
+      var flagDaysAgo = randInt(1, 26);
+      c.flaggedDate = addDays(today, -flagDaysAgo);
+    }
+
+    var months = [];
+    for(var m = 11; m >= 0; m--){
+      months.push(new Date(today.getFullYear(), today.getMonth() - m, 1));
+    }
+    var dipIndex = randInt(2, 9);
+    var rootCauses = [
+      'coincides with a spike in Beeline roster discrepancies',
+      'driven by a backlog in Active Directory provisioning',
+      'linked to a SAP Fieldglass data sync outage',
+      'tied to a surge in contract renewals processed late',
+      'coincides with a ServiceNow PPM workflow migration'
+    ];
+    var dipRootCause = pick(rootCauses);
+    var turnoverRootCauses = [
+      'a batch of contracts hit their natural end date without renewal',
+      'a vendor consolidation moved several roles to a different staffing partner',
+      'seasonal offboarding following a project close-out',
+      'a client-side budget freeze triggered early terminations'
+    ];
+    var turnoverSpikeCause = pick(turnoverRootCauses);
+    var slaTrend = months.map(function(d, idx){
+      var pct;
+      if(idx === dipIndex) pct = rand(76, 83);
+      else pct = rand(91, 98);
+      var turnoverPct = idx === dipIndex ? rand(11, 16) : rand(2, 7);
+      return {
+        monthDate: d,
+        label: d.toLocaleDateString('en-US', { month:'short', year:'2-digit' }),
+        fullLabel: d.toLocaleDateString('en-US', { month:'long', year:'numeric' }),
+        value: Math.round(pct * 10) / 10,
+        isDip: idx === dipIndex,
+        rootCause: idx === dipIndex ? dipRootCause : null,
+        turnoverValue: Math.round(turnoverPct * 10) / 10,
+        turnoverSpike: idx === dipIndex,
+        turnoverCause: idx === dipIndex ? turnoverSpikeCause : null
+      };
+    });
+
+    return { contractors: contractors, slaTrend: slaTrend };
+  }
+
+  /* ============================================================
+     CSV / JSON PARSING
+  ============================================================ */
+  function parseCSV(text){
+    var rows = [];
+    var row = [];
+    var field = '';
+    var inQuotes = false;
+    for(var i = 0; i < text.length; i++){
+      var ch = text[i];
+      if(inQuotes){
+        if(ch === '"'){
+          if(text[i+1] === '"'){ field += '"'; i++; }
+          else inQuotes = false;
+        } else field += ch;
+      } else {
+        if(ch === '"') inQuotes = true;
+        else if(ch === ','){ row.push(field); field = ''; }
+        else if(ch === '\r'){ /* skip */ }
+        else if(ch === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+        else field += ch;
+      }
+    }
+    if(field.length > 0 || row.length > 0){ row.push(field); rows.push(row); }
+    while(rows.length && rows[rows.length - 1].every(function(f){ return f === ''; })) rows.pop();
+    if(!rows.length) throw new Error('CSV file appears to be empty.');
+    var headers = rows[0].map(function(h){ return String(h).trim(); });
+    if(!headers.length || headers.every(function(h){ return h === ''; })) throw new Error('No column headers detected.');
+    var dataRows = rows.slice(1).map(function(r){
+      var obj = {};
+      headers.forEach(function(h, idx){ obj[h] = r[idx] !== undefined ? r[idx] : ''; });
+      return obj;
+    }).filter(function(r){
+      return Object.keys(r).some(function(k){ return String(r[k]).trim() !== ''; });
+    });
+    if(!dataRows.length) throw new Error('No data rows found beneath the header row.');
+    return { headers: headers, rows: dataRows };
+  }
+
+  function parseJSONFile(text){
+    var data = JSON.parse(text);
+    if(Array.isArray(data)){ /* ok */ }
+    else if(data && Array.isArray(data.data)) data = data.data;
+    else if(data && Array.isArray(data.records)) data = data.records;
+    else if(data && Array.isArray(data.contractors)) data = data.contractors;
+    else throw new Error('JSON must be an array of records, or an object containing a "data" array.');
+    if(!data.length) throw new Error('JSON array is empty.');
+    if(typeof data[0] !== 'object' || data[0] === null) throw new Error('JSON records must be objects.');
+    var headerSet = {};
+    var headers = [];
+    data.forEach(function(r){
+      if(r && typeof r === 'object'){
+        Object.keys(r).forEach(function(k){
+          if(!headerSet[k]){ headerSet[k] = true; headers.push(k); }
+        });
+      }
+    });
+    return { headers: headers, rows: data };
+  }
+
+  function guessMapping(headers){
+    var g = {};
+    var norm = headers.map(function(h){ return { h: h, l: String(h).toLowerCase() }; });
+    function find(){
+      var keywords = Array.prototype.slice.call(arguments);
+      var hit = norm.find(function(x){ return keywords.some(function(k){ return x.l.indexOf(k) !== -1; }); });
+      return hit ? hit.h : '';
+    }
+    g.name = find('contractor name', 'full name', 'name');
+    g.vendor = find('vendor', 'staffing', 'agency', 'partner', 'supplier');
+    g.state = find('state', 'location', 'province', 'region');
+    g.age = find('age');
+    g.gender = find('gender', 'sex');
+    g.payBand = find('pay band', 'pay grade', 'salary band', 'compensation', 'pay');
+    g.endDate = find('end date', 'contract end', 'expir', 'end_date');
+    g.systemAStatus = find('servicenow', 'snow status', 'system a');
+    g.systemBStatus = find('beeline', 'fieldglass', 'vms', 'system b');
+    g.extensionStatus = find('extension');
+    g.requestReceived = find('request received', 'request date');
+    g.adCreated = find('ad profile', 'ad created', 'active directory');
+    g.accessGranted = find('access granted', 'system access');
+    g.goLive = find('go live', 'go-live', 'golive', 'start date');
+    return g;
+  }
+
+  /* ============================================================
+     SUPABASE DATA LAYER
+  ============================================================ */
+  function contractorToRow(c){
+    return {
+      name: c.name,
+      vendor: c.vendor || null,
+      vms: c.vms || null,
+      state: c.state || null,
+      age: (typeof c.age === 'number') ? c.age : null,
+      gender: c.gender || null,
+      pay_band: c.payBand || null,
+      metric_modifier: (typeof c.metricModifier === 'number') ? c.metricModifier : 0,
+      status: c.status || null,
+      end_date: toISODate(c.endDate),
+      extension_status: c.extensionStatus || null,
+      request_received: toISODate(c.requestReceived),
+      ad_created: toISODate(c.adCreated),
+      access_granted: toISODate(c.accessGranted),
+      go_live: toISODate(c.goLive),
+      system_a_status: c.systemAStatus || null,
+      system_b_status: c.systemBStatus || null,
+      discrepancy_type: c.discrepancyType || null,
+      flagged_date: toISODate(c.flaggedDate)
+    };
+  }
+  function rowToContractor(r, today){
+    var endDate = parseDateFlexible(r.end_date);
+    var daysUntilExpiration = endDate ? Math.round((endDate - today) / 86400000) : null;
+    return {
+      id: r.id,
+      name: r.name,
+      vendor: r.vendor,
+      vms: r.vms,
+      state: r.state,
+      age: (r.age === null || r.age === undefined) ? null : Number(r.age),
+      gender: r.gender,
+      payBand: r.pay_band,
+      metricModifier: r.metric_modifier === null || r.metric_modifier === undefined ? 0 : Number(r.metric_modifier),
+      status: r.status,
+      endDate: endDate,
+      daysUntilExpiration: daysUntilExpiration,
+      extensionStatus: r.extension_status,
+      requestReceived: parseDateFlexible(r.request_received),
+      adCreated: parseDateFlexible(r.ad_created),
+      accessGranted: parseDateFlexible(r.access_granted),
+      goLive: parseDateFlexible(r.go_live),
+      systemAStatus: r.system_a_status,
+      systemBStatus: r.system_b_status,
+      discrepancyType: r.discrepancy_type,
+      flaggedDate: parseDateFlexible(r.flagged_date)
+    };
+  }
+  function slaTrendToRow(t){
+    return {
+      month_date: toISODate(t.monthDate),
+      label: t.label,
+      full_label: t.fullLabel,
+      value: t.value,
+      is_dip: !!t.isDip,
+      root_cause: t.rootCause || null,
+      turnover_value: (typeof t.turnoverValue === 'number') ? t.turnoverValue : null,
+      turnover_spike: !!t.turnoverSpike,
+      turnover_cause: t.turnoverCause || null
+    };
+  }
+  function rowToSlaTrend(r){
+    return {
+      monthDate: parseDateFlexible(r.month_date),
+      label: r.label,
+      fullLabel: r.full_label,
+      value: Number(r.value),
+      isDip: !!r.is_dip,
+      rootCause: r.root_cause,
+      turnoverValue: (r.turnover_value === null || r.turnover_value === undefined) ? null : Number(r.turnover_value),
+      turnoverSpike: !!r.turnover_spike,
+      turnoverCause: r.turnover_cause
+    };
+  }
+
+  async function loadFromSupabase(){
+    if(!sb) return null;
+    try{
+      var today = new Date(); today.setHours(0,0,0,0);
+      var cRes = await sb.from('contractors').select('*').order('created_at', { ascending:true });
+      if(cRes.error) throw cRes.error;
+      var sRes = await sb.from('sla_trend').select('*').order('month_date', { ascending:true });
+      if(sRes.error) throw sRes.error;
+      var mRes = await sb.from('app_meta').select('value').eq('key', 'data_source').maybeSingle();
+      return {
+        contractors: (cRes.data || []).map(function(r){ return rowToContractor(r, today); }),
+        slaTrend: (sRes.data || []).map(rowToSlaTrend),
+        source: (mRes.data && mRes.data.value) || 'demo'
+      };
+    }catch(err){
+      console.error('Supabase load failed:', err);
+      return null;
+    }
+  }
+
+  async function syncToSupabase(contractors, slaTrend, source){
+    if(!sb) return false;
+    try{
+      var delC = await sb.from('contractors').delete().not('id', 'is', null);
+      if(delC.error) throw delC.error;
+      if(contractors.length){
+        var insC = await sb.from('contractors').insert(contractors.map(contractorToRow));
+        if(insC.error) throw insC.error;
+      }
+      // Only touch sla_trend when the caller actually has trend rows to write —
+      // a CSV/JSON import passes an empty array and must not wipe existing trend history.
+      if(slaTrend.length){
+        var delS = await sb.from('sla_trend').delete().not('id', 'is', null);
+        if(delS.error) throw delS.error;
+        var insS = await sb.from('sla_trend').insert(slaTrend.map(slaTrendToRow));
+        if(insS.error) throw insS.error;
+      }
+      var metaRes = await sb.from('app_meta').upsert({ key:'data_source', value: source || 'demo' }, { onConflict:'key' });
+      if(metaRes.error) throw metaRes.error;
+      return true;
+    }catch(err){
+      console.error('Supabase sync failed:', err);
+      return false;
+    }
+  }
+
+  /* ============================================================
+     DERIVED COMPUTATIONS
+  ============================================================ */
+  var AGE_BUCKETS = [
+    { key:'20-29', label:'20–29', min:20, max:29 },
+    { key:'30-39', label:'30–39', min:30, max:39 },
+    { key:'40-49', label:'40–49', min:40, max:49 },
+    { key:'50-59', label:'50–59', min:50, max:59 },
+    { key:'60+', label:'60+', min:60, max:200 }
+  ];
+  var TENURE_BUCKETS = [
+    { key:'lt3', label:'< 3 mo', min:0, max:3 },
+    { key:'3-6', label:'3–6 mo', min:3, max:6 },
+    { key:'6-12', label:'6–12 mo', min:6, max:12 },
+    { key:'1-2y', label:'1–2 yr', min:12, max:24 },
+    { key:'2y+', label:'2+ yr', min:24, max:100000 }
+  ];
+  var FUNNEL_STAGE_DEFS = [
+    { key:'stage1', short:'Request → AD Profile', label:'Request Received → AD Profile Created', cause:'often tied to incomplete or delayed request forms from hiring managers' },
+    { key:'stage2', short:'AD Profile → System Access', label:'AD Profile Created → System Access Granted', cause:'largely driven by Active Directory and downstream system access provisioning queues' },
+    { key:'stage3', short:'System Access → Go-Live', label:'System Access Granted → Go-Live', cause:'typically final manager sign-off and equipment readiness' }
+  ];
+
+  function todayDate(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
+  function bucketOf(c){
+    if(typeof c.daysUntilExpiration !== 'number') return null;
+    if(c.daysUntilExpiration <= 30) return '30';
+    if(c.daysUntilExpiration <= 60) return '60';
+    if(c.daysUntilExpiration <= 90) return '90';
+    return null;
+  }
+  function monthKeyOf(d){
+    if(!(d instanceof Date) || isNaN(d.getTime())) return null;
+    var m = d.getMonth() + 1;
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m;
+  }
+  function ageBucketOf(c){
+    if(typeof c.age !== 'number') return null;
+    var b = AGE_BUCKETS.find(function(b){ return c.age >= b.min && c.age <= b.max; });
+    return b ? b.key : null;
+  }
+  function tenureBucketOf(c, today){
+    var m = tenureMonthsOf(c, today);
+    if(m === null) return null;
+    var b = TENURE_BUCKETS.find(function(b){ return m >= b.min && m < b.max; });
+    return b ? b.key : null;
+  }
+  function funnelStageOf(c){
+    if(!(c.requestReceived instanceof Date && c.adCreated instanceof Date && c.accessGranted instanceof Date && c.goLive instanceof Date)) return null;
+    var s1 = (c.adCreated - c.requestReceived) / 86400000;
+    var s2 = (c.accessGranted - c.adCreated) / 86400000;
+    var s3 = (c.goLive - c.accessGranted) / 86400000;
+    if(s1 >= s2 && s1 >= s3) return 'stage1';
+    if(s2 >= s1 && s2 >= s3) return 'stage2';
+    return 'stage3';
+  }
+
+  /* Generic filter-dimension registry: every dim clickable as a filter source
+     is filtered the same way, and each chart self-excludes its own dim so it
+     keeps showing its full distribution with the active selection highlighted. */
+  var FILTER_DIMS = [
+    { key:'state', of: function(c){ return c.state || null; } },
+    { key:'bucket', of: function(c){ return bucketOf(c); } },
+    { key:'month', of: function(c){ return monthKeyOf(c.requestReceived); } },
+    { key:'ageBucket', of: function(c){ return ageBucketOf(c); } },
+    { key:'gender', of: function(c){ return c.gender || null; } },
+    { key:'payBand', of: function(c){ return c.payBand || null; } },
+    { key:'tenureBucket', of: function(c, today){ return tenureBucketOf(c, today); } },
+    { key:'funnelStage', of: function(c){ return funnelStageOf(c); } },
+    { key:'renewalStatus', of: function(c){
+        if(typeof c.daysUntilExpiration !== 'number' || c.daysUntilExpiration > 30) return null;
+        return c.extensionStatus || null;
+      } },
+    { key:'discType', of: function(c){
+        if(!c.systemAStatus || !c.systemBStatus) return null;
+        if(String(c.systemAStatus).trim().toLowerCase() === String(c.systemBStatus).trim().toLowerCase()) return null;
+        return c.discrepancyType || 'Status Mismatch';
+      } }
+  ];
+  function applyFilters(list, exclude){
+    var f = state.filters;
+    var today = todayDate();
+    return (list || []).filter(function(c){
+      return FILTER_DIMS.every(function(dim){
+        if(dim.key === exclude) return true;
+        var fv = f[dim.key];
+        if(!fv) return true;
+        return dim.of(c, today) === fv;
+      });
+    });
+  }
+  function getFilteredContractors(exclude){
+    return applyFilters(state.contractors, exclude || null);
+  }
+  function computeStateCounts(){
+    var cs = applyFilters(state.contractors, 'state');
+    var counts = {};
+    cs.forEach(function(c){
+      if(!c.state) return;
+      counts[c.state] = (counts[c.state] || 0) + 1;
+    });
+    return counts;
+  }
+  function computeKPIs(){
+    var cs = getFilteredContractors();
+    var totalActive = cs.filter(function(c){ return c.status === 'Active' || !c.status; }).length;
+    if(totalActive === 0 && cs.length) totalActive = cs.length;
+    var expiring30 = cs.filter(function(c){ return typeof c.daysUntilExpiration === 'number' && c.daysUntilExpiration <= 30; }).length;
+    var onboardSamples = cs.filter(function(c){ return c.requestReceived instanceof Date && c.goLive instanceof Date; });
+    var avgOnboard = null;
+    if(onboardSamples.length){
+      var totalDays = onboardSamples.reduce(function(sum, c){ return sum + ((c.goLive - c.requestReceived) / 86400000); }, 0);
+      avgOnboard = totalDays / onboardSamples.length;
+    }
+    var slaLatest = null;
+    var filteredTrend = computeFilteredSlaTrend();
+    if(filteredTrend.length) slaLatest = filteredTrend[filteredTrend.length - 1].value;
+    return { totalActive: totalActive, expiring30: expiring30, avgOnboard: avgOnboard, slaLatest: slaLatest, total: cs.length };
+  }
+
+  function computeFunnelStages(exclude){
+    var cs = applyFilters(state.contractors, exclude).filter(function(c){
+      return c.requestReceived instanceof Date && c.adCreated instanceof Date && c.accessGranted instanceof Date && c.goLive instanceof Date;
+    });
+    if(cs.length < 3) return null;
+    function avg(fn){ return cs.reduce(function(s, c){ return s + fn(c); }, 0) / cs.length; }
+    var values = [
+      avg(function(c){ return (c.adCreated - c.requestReceived) / 86400000; }),
+      avg(function(c){ return (c.accessGranted - c.adCreated) / 86400000; }),
+      avg(function(c){ return (c.goLive - c.accessGranted) / 86400000; })
+    ];
+    var stages = FUNNEL_STAGE_DEFS.map(function(def, idx){
+      return { key:def.key, label:def.label, short:def.short, cause:def.cause, value:values[idx], sampleSize:cs.length };
+    });
+    var maxIdx = 0;
+    stages.forEach(function(s, idx){ if(s.value > stages[maxIdx].value) maxIdx = idx; });
+    stages[maxIdx].highlight = true;
+    return { stages: stages, bottleneck: stages[maxIdx], sampleSize: cs.length };
+  }
+
+  function computeExpirationRows(exclude){
+    return applyFilters(state.contractors, exclude).filter(function(c){ return c.endDate instanceof Date && typeof c.daysUntilExpiration === 'number'; });
+  }
+  function computeExpirationBuckets(rows){
+    function stats(filterFn){
+      var subset = rows.filter(filterFn);
+      var atRisk = subset.filter(function(c){ return c.extensionStatus === 'Not Started'; }).length;
+      return { count: subset.length, atRisk: atRisk };
+    }
+    var b30 = stats(function(c){ return c.daysUntilExpiration <= 30; });
+    var b60 = stats(function(c){ return c.daysUntilExpiration > 30 && c.daysUntilExpiration <= 60; });
+    var b90 = stats(function(c){ return c.daysUntilExpiration > 60 && c.daysUntilExpiration <= 90; });
+    return [
+      { label:'≤ 30 days', key:'30', value:b30.count, atRisk:b30.atRisk },
+      { label:'31–60 days', key:'60', value:b60.count, atRisk:b60.atRisk },
+      { label:'61–90 days', key:'90', value:b90.count, atRisk:b90.atRisk }
+    ];
+  }
+  function radarRowClass(c){
+    if(c.daysUntilExpiration <= 30 && c.extensionStatus === 'Not Started') return 'row-red';
+    if(c.daysUntilExpiration <= 60) return 'row-yellow';
+    return 'row-green';
+  }
+  function radarDotClass(c){
+    if(c.daysUntilExpiration <= 30 && c.extensionStatus === 'Not Started') return 'red';
+    if(c.daysUntilExpiration <= 60) return 'yellow';
+    return 'green';
+  }
+
+  function computeFilteredSlaTrend(exclude){
+    var cs = getFilteredContractors(exclude);
+    var mods = cs.filter(function(c){ return typeof c.metricModifier === 'number'; }).map(function(c){ return c.metricModifier; });
+    var avgMod = mods.length ? mods.reduce(function(s,m){ return s + m; }, 0) / mods.length : 0;
+    return (state.slaTrend || []).map(function(t){
+      var v = Math.max(50, Math.min(100, Math.round((t.value + avgMod) * 10) / 10));
+      return { monthDate:t.monthDate, label:t.label, fullLabel:t.fullLabel, value:v, rootCause:t.rootCause, isDip:t.isDip };
+    });
+  }
+  function computeFilteredTurnoverTrend(exclude){
+    var cs = getFilteredContractors(exclude);
+    var mods = cs.filter(function(c){ return typeof c.metricModifier === 'number'; }).map(function(c){ return c.metricModifier; });
+    var avgMod = mods.length ? mods.reduce(function(s,m){ return s + m; }, 0) / mods.length : 0;
+    return (state.slaTrend || []).filter(function(t){ return typeof t.turnoverValue === 'number'; }).map(function(t){
+      var v = Math.max(0, Math.min(40, Math.round((t.turnoverValue - avgMod) * 10) / 10));
+      return { monthDate:t.monthDate, label:t.label, fullLabel:t.fullLabel, value:v, rootCause:t.turnoverCause, isDip:t.turnoverSpike };
+    });
+  }
+  function computeAgeBuckets(exclude){
+    var cs = getFilteredContractors(exclude).filter(function(c){ return typeof c.age === 'number'; });
+    return { total: cs.length, items: AGE_BUCKETS.map(function(b){
+      return { key:b.key, label:b.label, value: cs.filter(function(c){ return c.age >= b.min && c.age <= b.max; }).length };
+    }) };
+  }
+  function computeGenderSplit(exclude){
+    var cs = getFilteredContractors(exclude).filter(function(c){ return c.gender; });
+    var genders = {};
+    cs.forEach(function(c){ genders[c.gender] = (genders[c.gender] || 0) + 1; });
+    return { total: cs.length, items: Object.keys(genders).map(function(g){ return { key:g, label:g, value:genders[g] }; }) };
+  }
+  function computePayBandSplit(exclude){
+    var cs = getFilteredContractors(exclude).filter(function(c){ return c.payBand; });
+    var order = ['$60K–80K', '$80K–100K', '$100K–125K', '$125K–150K', '$150K+'];
+    var counts = {};
+    cs.forEach(function(c){ counts[c.payBand] = (counts[c.payBand] || 0) + 1; });
+    var seen = {};
+    var items = order.filter(function(b){ return counts[b]; }).map(function(b){ seen[b] = true; return { key:b, label:b, value:counts[b] }; });
+    Object.keys(counts).forEach(function(b){ if(!seen[b]) items.push({ key:b, label:b, value:counts[b] }); });
+    return { total: cs.length, items: items };
+  }
+  function tenureMonthsOf(c, today){
+    if(!(c.goLive instanceof Date)) return null;
+    var effectiveEnd = today;
+    if(typeof c.daysUntilExpiration === 'number' && c.daysUntilExpiration < 0 && c.endDate instanceof Date) effectiveEnd = c.endDate;
+    var months = (effectiveEnd - c.goLive) / (86400000 * 30.44);
+    return months > 0 ? months : 0;
+  }
+  function computeTenureBuckets(exclude){
+    var today = todayDate();
+    var cs = getFilteredContractors(exclude).map(function(c){ return tenureMonthsOf(c, today); }).filter(function(m){ return m !== null; });
+    var avg = cs.length ? cs.reduce(function(s,m){ return s + m; }, 0) / cs.length : 0;
+    return { total: cs.length, avgMonths: avg, items: TENURE_BUCKETS.map(function(b){
+      return { key:b.key, label:b.label, value: cs.filter(function(m){ return m >= b.min && m < b.max; }).length };
+    }) };
+  }
+
+  function computeDiscrepancies(){
+    var cs = getFilteredContractors();
+    var withBoth = cs.filter(function(c){ return c.systemAStatus && c.systemBStatus; });
+    if(!withBoth.length) return { available:false, rows:[] };
+    var mismatched = withBoth.filter(function(c){
+      return String(c.systemAStatus).trim().toLowerCase() !== String(c.systemBStatus).trim().toLowerCase();
+    });
+    return { available:true, rows: mismatched };
+  }
+
+  /* ---- Bottleneck Insights: renewal risk, discrepancy types, SLA/turnover co-event ---- */
+  function computeRenewalRisk(exclude){
+    var cs = applyFilters(state.contractors, exclude).filter(function(c){
+      return typeof c.daysUntilExpiration === 'number' && c.daysUntilExpiration <= 30;
+    });
+    var counts = {};
+    cs.forEach(function(c){
+      var k = c.extensionStatus || 'Unknown';
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    var order = ['Not Started', 'In Process', 'Not Required', 'Unknown'];
+    var items = order.filter(function(k){ return counts[k]; }).map(function(k){ return { key:k, label:k, value:counts[k] }; });
+    Object.keys(counts).forEach(function(k){ if(order.indexOf(k) === -1) items.push({ key:k, label:k, value:counts[k] }); });
+    var total = cs.length;
+    var notStarted = counts['Not Started'] || 0;
+    return { total: total, items: items, notStarted: notStarted, notStartedPct: total ? (notStarted / total * 100) : 0 };
+  }
+
+  function computeDiscrepancyTypeCounts(exclude){
+    var cs = applyFilters(state.contractors, exclude).filter(function(c){ return c.systemAStatus && c.systemBStatus; });
+    var mismatched = cs.filter(function(c){
+      return String(c.systemAStatus).trim().toLowerCase() !== String(c.systemBStatus).trim().toLowerCase();
+    });
+    var counts = {};
+    mismatched.forEach(function(c){
+      var k = c.discrepancyType || 'Status Mismatch';
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    var items = Object.keys(counts).map(function(k){ return { key:k, label:k, value:counts[k] }; })
+      .sort(function(a,b){ return b.value - a.value; });
+    return { total: mismatched.length, items: items, rows: mismatched };
+  }
+
+  function computeDiscrepancyVendorRates(mismatchedRows, allFilteredContractors){
+    var byVendor = {};
+    allFilteredContractors.forEach(function(c){
+      if(!c.vendor) return;
+      byVendor[c.vendor] = byVendor[c.vendor] || { total:0, flagged:0 };
+      byVendor[c.vendor].total++;
+    });
+    mismatchedRows.forEach(function(c){
+      if(c.vendor && byVendor[c.vendor]) byVendor[c.vendor].flagged++;
+    });
+    var list = Object.keys(byVendor).map(function(v){
+      var e = byVendor[v];
+      return { vendor:v, total:e.total, flagged:e.flagged, rate: e.total ? (e.flagged / e.total * 100) : 0 };
+    }).filter(function(v){ return v.flagged > 0; });
+    list.sort(function(a,b){ return b.rate - a.rate; });
+    return list;
+  }
+
+  function computeCoEvent(exclude){
+    var sla = computeFilteredSlaTrend(exclude);
+    var turn = computeFilteredTurnoverTrend(exclude);
+    if(sla.length < 2 || turn.length < 2) return null;
+    var minSla = Math.min.apply(null, sla.map(function(t){ return t.value; }));
+    var maxTurn = Math.max.apply(null, turn.map(function(t){ return t.value; }));
+    var slaDip = sla.find(function(t){ return t.value === minSla; });
+    var turnSpike = turn.find(function(t){ return t.value === maxTurn; });
+    var slaAvg = sla.reduce(function(s,t){ return s + t.value; }, 0) / sla.length;
+    var turnAvg = turn.reduce(function(s,t){ return s + t.value; }, 0) / turn.length;
+    var sameMonth = !!(slaDip && turnSpike && monthKeyOf(slaDip.monthDate) === monthKeyOf(turnSpike.monthDate));
+    return { sla: sla, turn: turn, slaDip: slaDip, turnSpike: turnSpike, slaAvg: slaAvg, turnAvg: turnAvg, sameMonth: sameMonth };
+  }
+
+  /* ============================================================
+     SVG CHART BUILDERS
+  ============================================================ */
+  function buildHBarChart(items, opts){
+    opts = opts || {};
+    var width = 460, barHeight = 26, gap = 20;
+    var max = Math.max.apply(null, items.map(function(i){ return i.value; }).concat([1]));
+    var total = items.reduce(function(s,i){ return s + i.value; }, 0);
+    var sampleSize = items.length ? (items[0].sampleSize || '') : '';
+    var y = 0, bars = '';
+    items.forEach(function(it){
+      var w = Math.max(6, (it.value / max) * (width * 0.6));
+      var color = it.highlight ? 'var(--amber)' : 'var(--navy)';
+      var pct = total > 0 ? (it.value / total * 100) : 0;
+      var isSelected = opts.filterDim && it.key && opts.selected === it.key;
+      var stroke = isSelected ? ' stroke="var(--navy-dark)" stroke-width="3"' : '';
+      var dimAttr = opts.filterDim ? ' data-filter-dim="' + opts.filterDim + '" data-filter-value="' + escapeHtml(it.key || '') + '"' : '';
+      bars += '<text x="0" y="' + (y + 13) + '" class="chart-bar-label">' + escapeHtml(it.short || it.label) + '</text>';
+      bars += '<g class="gauge-bar' + (opts.filterDim ? ' filter-el' : '') + '" data-gauge-type="funnel"' + dimAttr + ' data-label="' + escapeHtml(it.short || it.label) + '" data-percent="' + pct.toFixed(1) + '" data-days="' + safeNum(it.value).toFixed(1) + '" data-total="' + safeNum(total).toFixed(1) + '" data-n="' + escapeHtml(String(sampleSize)) + '">';
+      bars += '<rect x="0" y="' + (y + 18) + '" width="' + w.toFixed(1) + '" height="' + barHeight + '" rx="4" fill="' + color + '"' + stroke + '></rect>';
+      bars += '<text x="' + (w + 10).toFixed(1) + '" y="' + (y + 18 + barHeight / 2 + 4) + '" class="chart-bar-value">' + safeNum(it.value).toFixed(1) + 'd</text>';
+      bars += '</g>';
+      y += 18 + barHeight + gap;
+    });
+    var totalHeight = y - gap;
+    return '<svg viewBox="0 0 ' + (width + 70) + ' ' + totalHeight + '" width="100%" height="' + totalHeight + '" preserveAspectRatio="xMinYMin meet">' + bars + '</svg>';
+  }
+
+  function buildVBarChart(items){
+    var width = 320, height = 168, padB = 26, padT = 20, barGap = 24;
+    var innerH = height - padB - padT;
+    var max = Math.max.apply(null, items.map(function(i){ return i.value; }).concat([1]));
+    var barWidth = (width - barGap * (items.length + 1)) / items.length;
+    var bars = '';
+    items.forEach(function(it, idx){
+      var h = max > 0 ? (it.value / max) * innerH : 0;
+      var x = barGap + idx * (barWidth + barGap);
+      var y = padT + (innerH - h);
+      var atRisk = it.atRisk || 0;
+      var atRiskPct = it.value > 0 ? (atRisk / it.value * 100) : 0;
+      var isSelected = it.key && state.filters.bucket === it.key;
+      bars += '<g class="gauge-bar bucket-bar" data-gauge-type="bucket" data-filter-dim="bucket" data-filter-value="' + escapeHtml(it.key || '') + '" data-bucket="' + escapeHtml(it.key || '') + '" data-label="' + escapeHtml(it.label) + '" data-percent="' + atRiskPct.toFixed(1) + '" data-count="' + it.value + '" data-atrisk="' + atRisk + '">';
+      bars += '<rect class="vbar" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barWidth.toFixed(1) + '" height="' + Math.max(1,h).toFixed(1) + '" rx="4" fill="' + (isSelected ? 'var(--amber)' : 'var(--navy)') + '"></rect>';
+      bars += '<text class="vbar-value" x="' + (x + barWidth / 2).toFixed(1) + '" y="' + (y - 6).toFixed(1) + '" text-anchor="middle">' + it.value + '</text>';
+      bars += '</g>';
+      bars += '<text class="vbar-label" x="' + (x + barWidth / 2).toFixed(1) + '" y="' + (height - 6) + '" text-anchor="middle">' + escapeHtml(it.label) + '</text>';
+    });
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" width="100%" height="' + height + '" preserveAspectRatio="xMinYMin meet">' + bars + '</svg>';
+  }
+
+  function buildStatHBars(items, opts){
+    opts = opts || {};
+    var width = opts.width || 260, barHeight = opts.barHeight || 20, gap = opts.gap || 12;
+    var max = Math.max.apply(null, items.map(function(i){ return i.value; }).concat([1]));
+    var y = 0, bars = '';
+    items.forEach(function(it){
+      var w = it.value > 0 ? Math.max(4, (it.value / max) * (width * 0.62)) : 0;
+      var isSelected = opts.filterDim && it.key && opts.selected === it.key;
+      var fill = isSelected ? 'var(--amber)' : 'var(--navy)';
+      var dimAttr = opts.filterDim ? ' data-filter-dim="' + opts.filterDim + '" data-filter-value="' + escapeHtml(it.key || '') + '"' : '';
+      bars += '<text x="0" y="' + (y + 12) + '" class="stat-bar-label">' + escapeHtml(it.label) + '</text>';
+      bars += '<g class="' + (opts.filterDim ? 'filter-el' : '') + '"' + dimAttr + '>';
+      bars += '<rect x="0" y="' + (y + 16) + '" width="' + w.toFixed(1) + '" height="' + barHeight + '" rx="3" fill="' + fill + '"><title>' + escapeHtml(it.label) + ': ' + it.value + '</title></rect>';
+      bars += '<text x="' + (w + 8).toFixed(1) + '" y="' + (y + 16 + barHeight / 2 + 4) + '" class="stat-bar-value">' + it.value + '</text>';
+      bars += '</g>';
+      y += 16 + barHeight + gap;
+    });
+    var totalHeight = Math.max(1, y - gap);
+    return '<svg viewBox="0 0 ' + (width + 50) + ' ' + totalHeight + '" width="100%" height="' + totalHeight + '" preserveAspectRatio="xMinYMin meet">' + bars + '</svg>';
+  }
+
+  function buildStatVBars(items, opts){
+    opts = opts || {};
+    var width = opts.width || 320, height = opts.height || 130, padB = 22, padT = 18, barGap = 18;
+    var innerH = height - padB - padT;
+    var max = Math.max.apply(null, items.map(function(i){ return i.value; }).concat([1]));
+    var barWidth = (width - barGap * (items.length + 1)) / items.length;
+    var bars = '';
+    items.forEach(function(it, idx){
+      var h = max > 0 ? (it.value / max) * innerH : 0;
+      var x = barGap + idx * (barWidth + barGap);
+      var y = padT + (innerH - h);
+      var isSelected = opts.filterDim && it.key && opts.selected === it.key;
+      var fill = isSelected ? 'var(--amber)' : 'var(--navy)';
+      var dimAttr = opts.filterDim ? ' data-filter-dim="' + opts.filterDim + '" data-filter-value="' + escapeHtml(it.key || '') + '"' : '';
+      bars += '<g class="' + (opts.filterDim ? 'filter-el' : '') + '"' + dimAttr + '>';
+      bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barWidth.toFixed(1) + '" height="' + Math.max(1,h).toFixed(1) + '" rx="3" fill="' + fill + '"><title>' + escapeHtml(it.label) + ': ' + it.value + '</title></rect>';
+      bars += '<text class="stat-bar-value" x="' + (x + barWidth / 2).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" text-anchor="middle">' + it.value + '</text>';
+      bars += '<text class="stat-bar-label" x="' + (x + barWidth / 2).toFixed(1) + '" y="' + (height - 5) + '" text-anchor="middle">' + escapeHtml(it.label) + '</text>';
+      bars += '</g>';
+    });
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" width="100%" height="' + height + '" preserveAspectRatio="xMinYMin meet">' + bars + '</svg>';
+  }
+
+  function buildUSGridMap(counts, selectedState){
+    var cell = 32, gap = 3, step = cell + gap;
+    var maxCol = 12, maxRow = 8;
+    var width = maxCol * step - gap, height = maxRow * step - gap;
+    var maxCount = 0;
+    US_STATE_GRID.forEach(function(s){ if((counts[s.code] || 0) > maxCount) maxCount = counts[s.code] || 0; });
+    var tiles = US_STATE_GRID.map(function(s){
+      var x = (s.col - 1) * step, y = (s.row - 1) * step;
+      var count = counts[s.code] || 0;
+      var isSelected = selectedState === s.code;
+      var fill, opacity = 1;
+      if(count > 0){
+        fill = 'var(--navy)';
+        opacity = 0.18 + 0.82 * (maxCount > 0 ? count / maxCount : 0);
+      } else {
+        fill = 'var(--card-bg)';
+      }
+      var stroke = isSelected ? 'var(--amber)' : 'var(--border)';
+      var strokeW = isSelected ? 2.5 : 1;
+      var textColor = count > 0 && opacity > 0.55 ? '#fff' : 'var(--grey)';
+      var g = '<g class="state-tile' + (isSelected ? ' state-selected' : '') + '" data-state="' + s.code + '" data-name="' + escapeHtml(s.name) + '" data-count="' + count + '" data-filter-dim="state" data-filter-value="' + s.code + '">';
+      g += '<rect x="' + x + '" y="' + y + '" width="' + cell + '" height="' + cell + '" rx="3" fill="' + fill + '" fill-opacity="' + opacity.toFixed(2) + '" stroke="' + stroke + '" stroke-width="' + strokeW + '"></rect>';
+      g += '<text class="state-label" x="' + (x + cell / 2) + '" y="' + (y + cell / 2 - (count > 0 ? 3 : 0)) + '" text-anchor="middle" dominant-baseline="middle" fill="' + textColor + '">' + s.code + '</text>';
+      if(count > 0){
+        g += '<text class="state-count" x="' + (x + cell / 2) + '" y="' + (y + cell / 2 + 9) + '" text-anchor="middle" fill="' + textColor + '">' + count + '</text>';
+      }
+      g += '</g>';
+      return g;
+    }).join('');
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" width="100%" height="' + height + '" preserveAspectRatio="xMinYMin meet">' + tiles + '</svg>';
+  }
+
+  function buildGaugeSVG(pct, greenMax, amberMax){
+    var W = 200, H = 122, cx = 100, cy = 100, R = 80, SW = 16;
+    function pt(f){
+      var deg = -90 + f * 180, rad = deg * Math.PI / 180;
+      return { x: cx + R * Math.sin(rad), y: cy - R * Math.cos(rad) };
+    }
+    function arcPath(f1, f2){
+      var p1 = pt(f1), p2 = pt(f2);
+      var large = (f2 - f1) > 0.5 ? 1 : 0;
+      return 'M ' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1) + ' A ' + R + ' ' + R + ' 0 ' + large + ' 1 ' + p2.x.toFixed(1) + ' ' + p2.y.toFixed(1);
+    }
+    var gEnd = Math.max(0, Math.min(1, greenMax / 100));
+    var aEnd = Math.max(gEnd, Math.min(1, amberMax / 100));
+    var segs = '';
+    segs += '<path d="' + arcPath(0, gEnd) + '" stroke="var(--green)" stroke-width="' + SW + '" fill="none"/>';
+    segs += '<path d="' + arcPath(gEnd, aEnd) + '" stroke="var(--amber)" stroke-width="' + SW + '" fill="none"/>';
+    segs += '<path d="' + arcPath(aEnd, 1) + '" stroke="var(--red)" stroke-width="' + SW + '" fill="none"/>';
+    var f = Math.max(0, Math.min(1, pct / 100));
+    var needleLen = R - SW / 2 - 6;
+    var ndeg = -90 + f * 180, nrad = ndeg * Math.PI / 180;
+    var nx = cx + needleLen * Math.sin(nrad), ny = cy - needleLen * Math.cos(nrad);
+    var needle = '<line x1="' + cx + '" y1="' + cy + '" x2="' + nx.toFixed(1) + '" y2="' + ny.toFixed(1) + '" stroke="var(--navy-dark)" stroke-width="3.5" stroke-linecap="round"/>';
+    needle += '<circle cx="' + cx + '" cy="' + cy + '" r="7" fill="var(--navy-dark)"/>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="176" height="108">' + segs + needle + '</svg>';
+  }
+
+  function buildLineChart(points, highlightMax, opts){
+    opts = opts || {};
+    var width = 560, height = 230, padL = 42, padR = 16, padT = 16, padB = 30;
+    var innerW = width - padL - padR, innerH = height - padT - padB;
+    var values = points.map(function(p){ return p.value; });
+    var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+    var yMin = Math.floor((min - 3) / 5) * 5, yMax = Math.ceil((max + 3) / 5) * 5;
+    if(yMax <= yMin) yMax = yMin + 10;
+    var xStep = points.length > 1 ? innerW / (points.length - 1) : 0;
+    function xFor(i){ return padL + i * xStep; }
+    function yFor(v){ return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
+
+    var gridLines = '';
+    var gridCount = 4;
+    for(var g = 0; g <= gridCount; g++){
+      var val = yMin + (yMax - yMin) * g / gridCount;
+      var yy = yFor(val);
+      gridLines += '<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (width - padR) + '" y2="' + yy.toFixed(1) + '" class="chart-grid"/>';
+      gridLines += '<text x="' + (padL - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" class="chart-axis-label">' + val.toFixed(0) + '%</text>';
+    }
+    var pathD = '';
+    points.forEach(function(p, i){
+      var x = xFor(i), y = yFor(p.value);
+      pathD += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+    });
+    var notableIdx = highlightMax ? values.indexOf(max) : values.indexOf(min);
+    var dots = '', xlabels = '';
+    points.forEach(function(p, i){
+      var x = xFor(i), y = yFor(p.value);
+      var isDip = (i === notableIdx);
+      var monthKey = opts.filterDim ? monthKeyOf(p.monthDate) : null;
+      var isSelected = opts.filterDim && monthKey && opts.selected === monthKey;
+      var dimAttr = opts.filterDim ? ' data-filter-dim="' + opts.filterDim + '" data-filter-value="' + escapeHtml(monthKey || '') + '"' : '';
+      var ring = isSelected ? ' stroke="var(--navy-dark)" stroke-width="2.5"' : '';
+      dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isDip || isSelected ? 5 : 3.5) + '" class="' + (isDip ? 'chart-dot-dip' : 'chart-dot') + '"' + ring + dimAttr + ' data-label="' + escapeHtml(p.fullLabel || p.label) + '" data-value="' + p.value + '"></circle>';
+      if(i % Math.ceil(points.length / 6) === 0 || i === points.length - 1){
+        xlabels += '<text x="' + x.toFixed(1) + '" y="' + (height - 8) + '" text-anchor="middle" class="chart-axis-label">' + escapeHtml(p.label) + '</text>';
+      }
+    });
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" width="100%" height="' + height + '">' + gridLines + '<path d="' + pathD + '" class="chart-line"/>' + dots + xlabels + '</svg>';
+  }
+
+  function buildDualLineChart(seriesA, seriesB, opts){
+    opts = opts || {};
+    var width = 560, height = 230, padL = 42, padR = 16, padT = 22, padB = 30;
+    var innerW = width - padL - padR, innerH = height - padT - padB;
+    var yMin = 0, yMax = 100;
+    var n = Math.min(seriesA.length, seriesB.length);
+    var xStep = n > 1 ? innerW / (n - 1) : 0;
+    function xFor(i){ return padL + i * xStep; }
+    function yFor(v){ return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
+
+    var gridLines = '';
+    var gridCount = 4;
+    for(var g = 0; g <= gridCount; g++){
+      var val = yMin + (yMax - yMin) * g / gridCount;
+      var yy = yFor(val);
+      gridLines += '<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (width - padR) + '" y2="' + yy.toFixed(1) + '" class="chart-grid"/>';
+      gridLines += '<text x="' + (padL - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" class="chart-axis-label">' + val.toFixed(0) + '%</text>';
+    }
+    function pathFor(points){
+      var d = '';
+      for(var i = 0; i < n; i++){
+        var x = xFor(i), y = yFor(points[i].value);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+      }
+      return d;
+    }
+    var pathA = pathFor(seriesA), pathB = pathFor(seriesB);
+    var dotsA = '', dotsB = '', xlabels = '';
+    for(var i = 0; i < n; i++){
+      var x = xFor(i);
+      var pa = seriesA[i], pb = seriesB[i];
+      var monthKey = opts.filterDim ? monthKeyOf(pa.monthDate) : null;
+      var isSelected = opts.filterDim && monthKey && opts.selected === monthKey;
+      var dimAttr = opts.filterDim ? ' data-filter-dim="' + opts.filterDim + '" data-filter-value="' + escapeHtml(monthKey || '') + '"' : '';
+      var ringA = (pa.isDip || isSelected) ? ' stroke="var(--navy-dark)" stroke-width="2.5"' : '';
+      var ringB = (pb.isDip || isSelected) ? ' stroke="var(--navy-dark)" stroke-width="2.5"' : '';
+      var ya = yFor(pa.value), yb = yFor(pb.value);
+      dotsA += '<circle class="chart-dot" cx="' + x.toFixed(1) + '" cy="' + ya.toFixed(1) + '" r="' + (pa.isDip || isSelected ? 5 : 3) + '" fill="var(--navy)"' + ringA + dimAttr + ' data-label="' + escapeHtml(pa.fullLabel || pa.label) + '" data-value="' + pa.value + '"></circle>';
+      dotsB += '<circle class="chart-dot" cx="' + x.toFixed(1) + '" cy="' + yb.toFixed(1) + '" r="' + (pb.isDip || isSelected ? 5 : 3) + '" fill="var(--red)"' + ringB + dimAttr + ' data-label="' + escapeHtml(pb.fullLabel || pb.label) + '" data-value="' + pb.value + '"></circle>';
+      if(i % Math.ceil(n / 6) === 0 || i === n - 1){
+        xlabels += '<text x="' + x.toFixed(1) + '" y="' + (height - 8) + '" text-anchor="middle" class="chart-axis-label">' + escapeHtml(pa.label) + '</text>';
+      }
+    }
+    var legend = '<g transform="translate(' + padL + ',12)">' +
+      '<rect x="0" y="-8" width="10" height="10" fill="var(--navy)"></rect><text x="14" y="0" class="chart-axis-label">SLA %</text>' +
+      '<rect x="72" y="-8" width="10" height="10" fill="var(--red)"></rect><text x="86" y="0" class="chart-axis-label">Turnover %</text>' +
+      '</g>';
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" width="100%" height="' + height + '">' + gridLines + legend +
+      '<path d="' + pathA + '" class="chart-line"/><path d="' + pathB + '" fill="none" stroke="var(--red)" stroke-width="2.25"/>' +
+      dotsA + dotsB + xlabels + '</svg>';
+  }
+
+  /* ============================================================
+     TOOLTIP
+  ============================================================ */
+  var tooltipEl = null;
+  var gaugeEl = null;
+  function initTooltip(){
+    tooltipEl = document.getElementById('chartTooltip');
+    gaugeEl = document.getElementById('gaugePopup');
+    document.addEventListener('mousemove', function(e){
+      var dotTarget = e.target.closest && e.target.closest('.chart-dot, .chart-dot-dip');
+      var barTarget = e.target.closest && e.target.closest('.gauge-bar');
+      var stateTarget = e.target.closest && e.target.closest('.state-tile');
+      if(dotTarget){
+        hideGauge();
+        var label = dotTarget.getAttribute('data-label');
+        var value = dotTarget.getAttribute('data-value');
+        tooltipEl.textContent = label + ': ' + value + '%';
+        tooltipEl.style.left = e.clientX + 'px';
+        tooltipEl.style.top = e.clientY + 'px';
+        tooltipEl.classList.add('visible');
+      } else if(stateTarget){
+        hideGauge();
+        var sName = stateTarget.getAttribute('data-name');
+        var sCount = stateTarget.getAttribute('data-count');
+        tooltipEl.textContent = sName + ': ' + sCount + ' contractor(s)';
+        tooltipEl.style.left = e.clientX + 'px';
+        tooltipEl.style.top = e.clientY + 'px';
+        tooltipEl.classList.add('visible');
+      } else if(barTarget){
+        hideTooltip();
+        showGauge(barTarget, e);
+      } else {
+        hideTooltip();
+        hideGauge();
+      }
+    });
+  }
+  function hideTooltip(){
+    if(tooltipEl && tooltipEl.classList.contains('visible')){
+      tooltipEl.classList.remove('visible');
+      tooltipEl.textContent = '';
+    }
+  }
+  function hideGauge(){
+    if(gaugeEl) gaugeEl.classList.remove('visible');
+  }
+  function showGauge(target, e){
+    try{
+      var type = target.getAttribute('data-gauge-type');
+      var label = target.getAttribute('data-label') || '';
+      var pct = parseFloat(target.getAttribute('data-percent'));
+      if(isNaN(pct)) pct = 0;
+      var html = '';
+      if(type === 'funnel'){
+        var days = target.getAttribute('data-days');
+        var total = target.getAttribute('data-total');
+        var n = target.getAttribute('data-n');
+        html = buildGaugeSVG(pct, 40, 55) +
+          '<div class="gauge-title">' + escapeHtml(label) + '</div>' +
+          '<div class="gauge-value">' + pct.toFixed(1) + '%</div>' +
+          '<div class="gauge-sub">' + escapeHtml(days) + 'd of ' + escapeHtml(total) + 'd total onboarding time (n=' + escapeHtml(n) + ')</div>';
+      } else if(type === 'bucket'){
+        var count = target.getAttribute('data-count');
+        var atrisk = target.getAttribute('data-atrisk');
+        html = buildGaugeSVG(pct, 30, 60) +
+          '<div class="gauge-title">' + escapeHtml(label) + ' — at risk</div>' +
+          '<div class="gauge-value">' + pct.toFixed(1) + '%</div>' +
+          '<div class="gauge-sub">' + escapeHtml(atrisk) + ' of ' + escapeHtml(count) + ' contract(s) have no extension in process</div>';
+      } else {
+        return;
+      }
+      gaugeEl.innerHTML = html;
+      var popupW = 200, popupH = 190;
+      var left = Math.min(Math.max(e.clientX - popupW / 2, 8), window.innerWidth - popupW - 8);
+      var top = Math.max(e.clientY - popupH - 16, 8);
+      gaugeEl.style.left = left + 'px';
+      gaugeEl.style.top = top + 'px';
+      gaugeEl.classList.add('visible');
+    }catch(err){
+      hideGauge();
+    }
+  }
+
+  /* ============================================================
+     RENDER FUNCTIONS
+  ============================================================ */
+  function renderKPIs(){
+    var el = document.getElementById('kpiRow');
+    try{
+      var k = computeKPIs();
+      var cards = [
+        { label:'Total Active Contractors', value: k.total ? String(k.totalActive) : '—', sub: k.total ? (k.total + ' total records') : 'No data loaded' },
+        { label:'Contracts Expiring in 30 Days', value: k.total ? String(k.expiring30) : '—', sub:'Across all mapped contracts' },
+        { label:'Avg. Onboarding Time', value: k.avgOnboard !== null ? safeNum(k.avgOnboard).toFixed(1) + 'd' : 'N/A', sub: k.avgOnboard !== null ? 'Request Received → Go-Live' : 'Onboarding dates not available' },
+        { label:'Current SLA Compliance', value: k.slaLatest !== null ? safeNum(k.slaLatest,1).toFixed(1) + '%' : 'N/A', sub: k.slaLatest !== null ? 'Most recent month' : 'Monthly trend not available' }
+      ];
+      el.innerHTML = cards.map(function(c){
+        return '<div class="kpi-card"><div class="kpi-label">' + escapeHtml(c.label) + '</div>' +
+          '<div class="kpi-value">' + escapeHtml(c.value) + '</div>' +
+          '<div class="kpi-sub">' + escapeHtml(c.sub) + '</div></div>';
+      }).join('');
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">KPI summary could not be rendered.</div>';
+    }
+  }
+
+  function renderFunnel(){
+    var el = document.getElementById('funnelContent');
+    try{
+      var f = computeFunnelStages('funnelStage');
+      if(!f){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — map onboarding stage dates (Request Received, AD Profile Created, System Access Granted, Go-Live) to see the funnel.</div>';
+        return;
+      }
+      var html = buildHBarChart(f.stages, { filterDim:'funnelStage', selected: state.filters.funnelStage });
+      html += '<div class="callout"><strong>Bottleneck: ' + escapeHtml(f.bottleneck.short) + '</strong> — averaging ' + safeNum(f.bottleneck.value).toFixed(1) + ' days, the longest step in the lifecycle. This is ' + escapeHtml(f.bottleneck.cause) + '.</div>';
+      html += '<div class="table-note">Based on ' + f.sampleSize + ' contractor records with complete onboarding timestamps.</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Onboarding funnel could not be rendered.</div>';
+    }
+  }
+
+  function renderRadar(){
+    var el = document.getElementById('radarContent');
+    try{
+      var rows = computeExpirationRows(null);
+      var bucketSourceRows = computeExpirationRows('bucket');
+      if(!bucketSourceRows.length){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — map a Contract End Date column to see expiration tracking.</div>';
+        return;
+      }
+      var buckets = computeExpirationBuckets(bucketSourceRows);
+      var sortKey = state.radarSort.key, sortDir = state.radarSort.dir;
+      var sorted = rows.slice().sort(function(a, b){
+        var av = a[sortKey], bv = b[sortKey];
+        if(av instanceof Date) av = av.getTime();
+        if(bv instanceof Date) bv = bv.getTime();
+        if(typeof av === 'string') av = av.toLowerCase();
+        if(typeof bv === 'string') bv = bv.toLowerCase();
+        if(av === undefined || av === null) av = '';
+        if(bv === undefined || bv === null) bv = '';
+        if(av < bv) return sortDir === 'asc' ? -1 : 1;
+        if(av > bv) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+      var cols = [
+        { key:'name', label:'Name' },
+        { key:'vendor', label:'Vendor' },
+        { key:'endDate', label:'End Date' },
+        { key:'daysUntilExpiration', label:'Days Until Expiration' },
+        { key:'extensionStatus', label:'Extension Status' }
+      ];
+      var thead = cols.map(function(c){
+        var arrow = sortKey === c.key ? ('<span class="sort-arrow">' + (sortDir === 'asc' ? '▲' : '▼') + '</span>') : '';
+        return '<th data-key="' + c.key + '">' + escapeHtml(c.label) + arrow + '</th>';
+      }).join('');
+      var tbody = sorted.length ? sorted.map(function(c){
+        var vendor = c.vendor || '—';
+        var ext = c.extensionStatus || 'Unknown';
+        return '<tr class="' + radarRowClass(c) + '"><td><span class="status-dot ' + radarDotClass(c) + '"></span>' + escapeHtml(c.name) + '</td>' +
+          '<td>' + escapeHtml(vendor) + '</td>' +
+          '<td>' + escapeHtml(fmtDate(c.endDate)) + '</td>' +
+          '<td>' + c.daysUntilExpiration + '</td>' +
+          '<td>' + escapeHtml(ext) + '</td></tr>';
+      }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--grey-muted);">No contracts match the current filter.</td></tr>';
+      var html = buildVBarChart(buckets);
+      html += '<div class="table-scroll"><table class="data-table"><thead><tr>' + thead + '</tr></thead><tbody>' + tbody + '</tbody></table></div>';
+      html += '<div class="table-note">' + rows.length + ' contract(s) with a known end date. Click a column header to sort.</div>';
+      el.innerHTML = html;
+
+      var thEls = el.querySelectorAll('th[data-key]');
+      thEls.forEach(function(th){
+        th.addEventListener('click', function(){
+          var key = th.getAttribute('data-key');
+          if(state.radarSort.key === key){
+            state.radarSort.dir = state.radarSort.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.radarSort.key = key;
+            state.radarSort.dir = 'asc';
+          }
+          renderRadar();
+        });
+      });
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Contract expiration radar could not be rendered.</div>';
+    }
+  }
+
+  function renderMap(){
+    var el = document.getElementById('mapContent');
+    try{
+      var counts = computeStateCounts();
+      var total = 0;
+      Object.keys(counts).forEach(function(k){ total += counts[k]; });
+      if(!total){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — map a State / Location column to see the geographic breakdown.</div>';
+        return;
+      }
+      var html = buildUSGridMap(counts, state.filters.state);
+      var topStates = Object.keys(counts).sort(function(a,b){ return counts[b] - counts[a]; }).slice(0,3)
+        .map(function(code){ return (STATE_CODE_SET[code] || code) + ' (' + counts[code] + ')'; }).join(', ');
+      html += '<div class="table-note">' + total + ' contractor(s) with a known location across ' + Object.keys(counts).length + ' state(s). Top: ' + topStates + '.</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">State map could not be rendered.</div>';
+    }
+  }
+
+  function renderFilterBar(){
+    var el = document.getElementById('filterBar');
+    var f = state.filters;
+    var chips = [];
+    if(f.state){
+      var sName = STATE_CODE_SET[f.state] || f.state;
+      chips.push({ dim:'state', label:'State: ' + sName });
+    }
+    if(f.bucket){
+      var bLabel = f.bucket === '30' ? '≤ 30 days' : (f.bucket === '60' ? '31–60 days' : '61–90 days');
+      chips.push({ dim:'bucket', label:'Expiring: ' + bLabel });
+    }
+    if(f.month){
+      var mDef = (state.slaTrend || []).find(function(t){ return monthKeyOf(t.monthDate) === f.month; });
+      chips.push({ dim:'month', label:'Onboarded: ' + (mDef ? mDef.fullLabel : f.month) });
+    }
+    if(f.ageBucket){
+      var aDef = AGE_BUCKETS.find(function(b){ return b.key === f.ageBucket; });
+      chips.push({ dim:'ageBucket', label:'Age: ' + (aDef ? aDef.label : f.ageBucket) });
+    }
+    if(f.gender){
+      chips.push({ dim:'gender', label:'Gender: ' + f.gender });
+    }
+    if(f.payBand){
+      chips.push({ dim:'payBand', label:'Pay Band: ' + f.payBand });
+    }
+    if(f.tenureBucket){
+      var tDef = TENURE_BUCKETS.find(function(b){ return b.key === f.tenureBucket; });
+      chips.push({ dim:'tenureBucket', label:'Tenure: ' + (tDef ? tDef.label : f.tenureBucket) });
+    }
+    if(f.funnelStage){
+      var fDef = FUNNEL_STAGE_DEFS.find(function(d){ return d.key === f.funnelStage; });
+      chips.push({ dim:'funnelStage', label:'Bottleneck stage: ' + (fDef ? fDef.short : f.funnelStage) });
+    }
+    if(f.renewalStatus){
+      chips.push({ dim:'renewalStatus', label:'Renewal: ' + f.renewalStatus });
+    }
+    if(f.discType){
+      chips.push({ dim:'discType', label:'Discrepancy: ' + f.discType });
+    }
+    if(!chips.length){
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    el.hidden = false;
+    var html = '<span class="filter-bar-label">Filtered by:</span>';
+    html += chips.map(function(c){
+      return '<span class="filter-chip">' + escapeHtml(c.label) + '<button type="button" data-clear-filter="' + c.dim + '" aria-label="Remove filter">&times;</button></span>';
+    }).join('');
+    html += '<button type="button" class="filter-clear-all" data-clear-filter="all">Clear all</button>';
+    el.innerHTML = html;
+  }
+
+  function renderSLA(){
+    var el = document.getElementById('slaContent');
+    try{
+      var trend = computeFilteredSlaTrend('month');
+      if(trend.length < 2){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — monthly SLA compliance history was not found in the imported file.</div>';
+        return;
+      }
+      var html = buildLineChart(trend, false, { filterDim:'month', selected: state.filters.month });
+      var minVal = Math.min.apply(null, trend.map(function(t){ return t.value; }));
+      var dip = trend.find(function(t){ return t.value === minVal; });
+      if(dip){
+        var cause = dip.rootCause || 'the lowest compliance point for the currently filtered contractors';
+        html += '<div class="callout"><strong>Dip in ' + escapeHtml(dip.fullLabel) + '</strong> — compliance fell to ' + safeNum(dip.value,1).toFixed(1) + '%, ' + escapeHtml(cause) + '.</div>';
+      }
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">SLA compliance trend could not be rendered.</div>';
+    }
+  }
+
+  function renderTurnover(){
+    var el = document.getElementById('turnoverContent');
+    try{
+      var trend = computeFilteredTurnoverTrend('month');
+      if(trend.length < 2){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — monthly turnover history was not found.</div>';
+        return;
+      }
+      var html = buildLineChart(trend, true, { filterDim:'month', selected: state.filters.month });
+      var maxVal = Math.max.apply(null, trend.map(function(t){ return t.value; }));
+      var spike = trend.find(function(t){ return t.value === maxVal; });
+      if(spike){
+        var cause = spike.rootCause || 'the highest turnover point for the currently filtered contractors';
+        html += '<div class="callout"><strong>Spike in ' + escapeHtml(spike.fullLabel) + '</strong> — turnover rose to ' + safeNum(spike.value,1).toFixed(1) + '%, ' + escapeHtml(cause) + '.</div>';
+      }
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Turnover trend could not be rendered.</div>';
+    }
+  }
+
+  function renderDemographics(){
+    var el = document.getElementById('demographicsContent');
+    try{
+      var age = computeAgeBuckets('ageBucket');
+      var gender = computeGenderSplit('gender');
+      var pay = computePayBandSplit('payBand');
+      if(!age.total && !gender.total && !pay.total){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — map Age, Gender, and Pay Band columns to see the workforce breakdown.</div>';
+        return;
+      }
+      var html = '';
+      html += '<div class="subchart"><div class="subchart-title">Age Distribution</div>' +
+        (age.total ? buildStatVBars(age.items, { filterDim:'ageBucket', selected: state.filters.ageBucket }) : '<div class="placeholder">No age data available.</div>') + '</div>';
+      html += '<div class="subchart"><div class="subchart-title">Gender Split</div>' +
+        (gender.total ? buildStatHBars(gender.items, { filterDim:'gender', selected: state.filters.gender }) : '<div class="placeholder">No gender data available.</div>') + '</div>';
+      html += '<div class="subchart"><div class="subchart-title">Pay Band</div>' +
+        (pay.total ? buildStatHBars(pay.items, { filterDim:'payBand', selected: state.filters.payBand }) : '<div class="placeholder">No pay band data available.</div>') + '</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Demographics could not be rendered.</div>';
+    }
+  }
+
+  function renderTenure(){
+    var el = document.getElementById('tenureContent');
+    try{
+      var t = computeTenureBuckets('tenureBucket');
+      if(!t.total){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — map onboarding Go-Live dates to see tenure.</div>';
+        return;
+      }
+      var html = buildStatHBars(t.items, { width:260, barHeight:20, gap:10, filterDim:'tenureBucket', selected: state.filters.tenureBucket });
+      var avgYears = t.avgMonths / 12;
+      var avgLabel = avgYears >= 1 ? safeNum(avgYears,1).toFixed(1) + ' yr' : Math.round(t.avgMonths) + ' mo';
+      html += '<div class="table-note">' + t.total + ' contractor(s) with a known tenure. Average time in assignment: ' + avgLabel + '.</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Tenure report could not be rendered.</div>';
+    }
+  }
+
+  function renderDiscrepancies(){
+    var el = document.getElementById('discContent');
+    try{
+      var d = computeDiscrepancies();
+      if(!d.available){
+        el.innerHTML = '<div class="placeholder">Not enough data for this section — map both System A Status and System B Status columns to detect discrepancies.</div>';
+        return;
+      }
+      if(!d.rows.length){
+        el.innerHTML = '<div class="placeholder">No discrepancies found — System A and System B statuses agree across all mapped records.</div>';
+        return;
+      }
+      var rowsHtml = d.rows.map(function(c){
+        var flagged = c.flaggedDate instanceof Date ? fmtDate(c.flaggedDate) : '—';
+        return '<tr class="disc-row"><td><span class="warn-icon">&#9888;</span>' + escapeHtml(c.name) + '</td>' +
+          '<td>' + escapeHtml(c.systemAStatus) + '</td>' +
+          '<td>' + escapeHtml(c.systemBStatus) + '</td>' +
+          '<td>' + escapeHtml(c.discrepancyType || 'Status Mismatch') + '</td>' +
+          '<td>' + escapeHtml(flagged) + '</td></tr>';
+      }).join('');
+      var html = '<div class="table-scroll"><table class="data-table"><thead><tr>' +
+        '<th>Contractor Name</th><th>System A</th><th>System B</th><th>Discrepancy Type</th><th>Flagged Date</th>' +
+        '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>';
+      html += '<div class="table-note">' + d.rows.length + ' record(s) with disagreeing status across source systems.</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Data discrepancy list could not be rendered.</div>';
+    }
+  }
+
+  /* ---- Bottleneck Insights render functions ---- */
+  function renderBnFunnel(){
+    var el = document.getElementById('bnFunnelContent');
+    if(!el) return;
+    try{
+      var f = computeFunnelStages('funnelStage');
+      if(!f){
+        el.innerHTML = '<div class="placeholder">Not enough data — map onboarding stage dates to see this chart.</div>';
+        return;
+      }
+      var totalDays = f.stages.reduce(function(s,x){ return s + x.value; }, 0);
+      var sharePct = totalDays > 0 ? (f.bottleneck.value / totalDays * 100) : 0;
+      var html = buildHBarChart(f.stages, { filterDim:'funnelStage', selected: state.filters.funnelStage });
+      html += '<div class="callout"><strong>' + escapeHtml(f.bottleneck.short) + '</strong> averages ' + safeNum(f.bottleneck.value).toFixed(1) + ' days, ' + sharePct.toFixed(0) + '% of total onboarding time and the slowest of the three stages. This is ' + escapeHtml(f.bottleneck.cause) + '.<br><strong>Recommend:</strong> a stage-level SLA, a weekly vendor scorecard, and a provisioning-automation review for the slowest vendors.</div>';
+      html += '<div class="table-note">Based on ' + f.sampleSize + ' contractor records with complete onboarding timestamps.</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Onboarding bottleneck could not be rendered.</div>';
+    }
+  }
+
+  function renderBnRenewal(){
+    var el = document.getElementById('bnRenewalContent');
+    if(!el) return;
+    try{
+      var r = computeRenewalRisk('renewalStatus');
+      if(!r.total){
+        el.innerHTML = '<div class="placeholder">No contracts are expiring within 30 days for the current filter.</div>';
+        return;
+      }
+      var html = buildStatHBars(r.items, { width:300, filterDim:'renewalStatus', selected: state.filters.renewalStatus });
+      html += '<div class="callout"><strong>' + r.notStarted + ' of ' + r.total + ' (' + r.notStartedPct.toFixed(0) + '%)</strong> have no renewal started yet, with the contract end date inside 30 days.<br><strong>Recommend:</strong> move the renewal-alert threshold from 30 to 45–60 days so vendors have runway to act.</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Renewal pipeline risk could not be rendered.</div>';
+    }
+  }
+
+  function renderBnDisc(){
+    var el = document.getElementById('bnDiscContent');
+    if(!el) return;
+    try{
+      var d = computeDiscrepancyTypeCounts('discType');
+      if(!d.total){
+        el.innerHTML = '<div class="placeholder">No discrepancies found for the current filter.</div>';
+        return;
+      }
+      var html = buildStatHBars(d.items, { width:300, filterDim:'discType', selected: state.filters.discType });
+      var top2 = d.items.slice(0, 2);
+      var top2Sum = top2.reduce(function(s,i){ return s + i.value; }, 0);
+      var top2Pct = d.total ? (top2Sum / d.total * 100) : 0;
+      var allFiltered = getFilteredContractors('discType');
+      var vendorRates = computeDiscrepancyVendorRates(d.rows, allFiltered);
+      var worst = vendorRates.length ? vendorRates[0] : null;
+      var text = '';
+      if(top2.length === 2){
+        text += '<strong>' + escapeHtml(top2[0].label) + '</strong> and <strong>' + escapeHtml(top2[1].label) + '</strong> account for ' + top2Sum + ' of the ' + d.total + ' flags (' + top2Pct.toFixed(0) + '%).';
+      } else if(top2.length === 1){
+        text += '<strong>' + escapeHtml(top2[0].label) + '</strong> accounts for ' + top2Sum + ' of the ' + d.total + ' flags (' + top2Pct.toFixed(0) + '%).';
+      }
+      if(worst){
+        text += ' ' + escapeHtml(worst.vendor) + ' has the highest flag rate (' + worst.rate.toFixed(0) + '%, ' + worst.flagged + ' of ' + worst.total + ').';
+      }
+      html += '<div class="callout">' + text + '<br><strong>Recommend:</strong> daily automated reconciliation targeted at the leading mismatch types, rather than a periodic manual review.</div>';
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">Discrepancy breakdown could not be rendered.</div>';
+    }
+  }
+
+  function renderBnCoEvent(){
+    var el = document.getElementById('bnCoEventContent');
+    if(!el) return;
+    try{
+      var ce = computeCoEvent('month');
+      if(!ce){
+        el.innerHTML = '<div class="placeholder">Not enough data — monthly SLA and turnover history was not found.</div>';
+        return;
+      }
+      var html = buildDualLineChart(ce.sla, ce.turn, { filterDim:'month', selected: state.filters.month });
+      if(ce.sameMonth){
+        var m = ce.slaDip;
+        var slaDrop = ce.slaAvg - ce.slaDip.value;
+        var turnMultiple = ce.turnAvg > 0 ? (ce.turnSpike.value / ce.turnAvg) : null;
+        html += '<div class="callout"><strong>' + escapeHtml(m.fullLabel) + '</strong> — SLA compliance (' + safeNum(ce.slaDip.value).toFixed(1) + '%) is ' + safeNum(slaDrop).toFixed(1) + ' points below the trailing average (' + safeNum(ce.slaAvg).toFixed(1) + '%), while turnover (' + safeNum(ce.turnSpike.value).toFixed(1) + '%) is' + (turnMultiple ? ' ' + safeNum(turnMultiple).toFixed(1) + 'x the average' : ' also elevated') + ' in the same month. ' + escapeHtml(m.rootCause || 'The two moving together points to resource contention.') + '<br><strong>Recommend:</strong> temporary resource reallocation or external support in known high-turnover months.</div>';
+      } else {
+        html += '<div class="callout callout-neutral">The SLA dip and turnover spike fall in different months for the current filter — no single co-occurring event to flag.</div>';
+      }
+      el.innerHTML = html;
+    }catch(err){
+      el.innerHTML = '<div class="placeholder">SLA / turnover co-event could not be rendered.</div>';
+    }
+  }
+
+  function updateSourceLabel(){
+    var el = document.getElementById('sourceLabel');
+    var base = state.source === 'imported' ? 'Imported Data' : 'Demo Data';
+    el.classList.remove('imported', 'syncing', 'error', 'offline');
+    if(state.syncStatus === 'loading'){
+      el.textContent = 'Connecting to Supabase…';
+      el.classList.add('syncing');
+    } else if(state.syncStatus === 'syncing'){
+      el.textContent = 'Saving ' + base + ' to Supabase…';
+      el.classList.add('syncing');
+    } else if(state.syncStatus === 'synced'){
+      el.textContent = 'Viewing: ' + base + ' · Synced to Supabase';
+      if(state.source === 'imported') el.classList.add('imported');
+    } else if(state.syncStatus === 'error'){
+      el.textContent = 'Viewing: ' + base + ' · Supabase save failed (local only)';
+      el.classList.add('error');
+    } else if(state.syncStatus === 'offline'){
+      el.textContent = 'Viewing: ' + base + ' · Supabase unavailable (local only)';
+      el.classList.add('offline');
+    } else {
+      el.textContent = 'Viewing: ' + base;
+      if(state.source === 'imported') el.classList.add('imported');
+    }
+  }
+
+  function renderAll(){
+    renderKPIs();
+    renderFilterBar();
+    renderFunnel();
+    renderMap();
+    renderRadar();
+    renderSLA();
+    renderDemographics();
+    renderTurnover();
+    renderTenure();
+    renderDiscrepancies();
+    renderBnFunnel();
+    renderBnRenewal();
+    renderBnDisc();
+    renderBnCoEvent();
+    updateSourceLabel();
+  }
+
+  function initCrossFilterClicks(){
+    document.addEventListener('click', function(e){
+      var el = e.target.closest && e.target.closest('[data-filter-dim]');
+      if(el){
+        var dim = el.getAttribute('data-filter-dim');
+        var val = el.getAttribute('data-filter-value');
+        if(dim && val){
+          state.filters[dim] = (state.filters[dim] === val) ? null : val;
+          renderAll();
+        }
+        return;
+      }
+      var clearBtn = e.target.closest && e.target.closest('[data-clear-filter]');
+      if(clearBtn){
+        var cdim = clearBtn.getAttribute('data-clear-filter');
+        if(cdim === 'all'){
+          Object.keys(state.filters).forEach(function(k){ state.filters[k] = null; });
+        } else {
+          state.filters[cdim] = null;
+        }
+        renderAll();
+        return;
+      }
+    });
+  }
+
+  /* ============================================================
+     IMPORT / MAPPING FLOW
+  ============================================================ */
+  function showImportError(msg){
+    var box = document.getElementById('importErrorBox');
+    box.textContent = msg;
+    box.hidden = false;
+  }
+  function clearImportError(){
+    var box = document.getElementById('importErrorBox');
+    box.hidden = true;
+    box.textContent = '';
+  }
+
+  function handleFile(file){
+    clearImportError();
+    var isJson = /\.json$/i.test(file.name);
+    var isCsv = /\.csv$/i.test(file.name);
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var text = e.target.result;
+        var parsed;
+        if(isJson){
+          parsed = parseJSONFile(text);
+        } else if(isCsv){
+          parsed = parseCSV(text);
+        } else {
+          try{ parsed = parseJSONFile(text); }
+          catch(e2){ parsed = parseCSV(text); }
+        }
+        if(!parsed.headers || !parsed.headers.length) throw new Error('No columns detected in the file.');
+        if(!parsed.rows || !parsed.rows.length) throw new Error('No data rows found in the file.');
+        state.pendingParsed = parsed;
+        openMappingModal(parsed);
+      }catch(err){
+        showImportError('Import failed: ' + (err && err.message ? err.message : 'the file could not be parsed.') + ' Please check the file and try again.');
+      }
+    };
+    reader.onerror = function(){
+      showImportError('Import failed: the file could not be read.');
+    };
+    try{
+      reader.readAsText(file);
+    }catch(err){
+      showImportError('Import failed: ' + (err && err.message ? err.message : 'unexpected error reading the file.'));
+    }
+  }
+
+  function openMappingModal(parsed){
+    var guesses = guessMapping(parsed.headers);
+    var rowsHtml = MAP_FIELDS.map(function(f){
+      var options = '<option value="">-- None --</option>' + parsed.headers.map(function(h){
+        var sel = guesses[f.key] === h ? ' selected' : '';
+        return '<option value="' + escapeHtml(h) + '"' + sel + '>' + escapeHtml(h) + '</option>';
+      }).join('');
+      return '<div class="map-row"><label class="map-label">' + escapeHtml(f.label) + (f.required ? ' <span class="req">*</span>' : '') + '</label>' +
+        '<select id="map_' + f.key + '" class="map-select">' + options + '</select></div>';
+    }).join('');
+    var chips = parsed.headers.map(function(h){ return '<span class="chip">' + escapeHtml(h) + '</span>'; }).join('');
+    var body = document.getElementById('mappingBody');
+    body.innerHTML =
+      '<p class="map-intro">We detected <strong>' + parsed.headers.length + '</strong> column(s) and <strong>' + parsed.rows.length + '</strong> row(s). Match each dashboard field to a column from your file, or leave it as "None" if not available.</p>' +
+      '<div class="map-detected"><strong>Detected columns:</strong><br>' + chips + '</div>' +
+      '<div class="map-grid">' + rowsHtml + '</div>' +
+      '<div id="mappingError" class="import-error" hidden></div>';
+    document.getElementById('mappingModal').hidden = false;
+    document.body.classList.add('modal-open');
+  }
+
+  function closeMappingModal(){
+    document.getElementById('mappingModal').hidden = true;
+    document.body.classList.remove('modal-open');
+    state.pendingParsed = null;
+  }
+
+  async function onConfirmMapping(){
+    try{
+      var parsed = state.pendingParsed;
+      if(!parsed){ closeMappingModal(); return; }
+      var mapping = {};
+      MAP_FIELDS.forEach(function(f){
+        var sel = document.getElementById('map_' + f.key);
+        mapping[f.key] = sel && sel.value ? sel.value : '';
+      });
+      if(!mapping.name){
+        var errBox = document.getElementById('mappingError');
+        errBox.textContent = 'Please map a column to Contractor Name before continuing.';
+        errBox.hidden = false;
+        return;
+      }
+      var today = new Date(); today.setHours(0,0,0,0);
+      var contractors = parsed.rows.map(function(r, idx){
+        function get(k){ return mapping[k] ? r[mapping[k]] : undefined; }
+        var name = (get('name') || '').toString().trim() || ('Row ' + (idx + 1));
+        var vendor = (get('vendor') || '').toString().trim();
+        var rawState = (get('state') || '').toString().trim();
+        var stateCode = null;
+        if(rawState){
+          if(rawState.length === 2) stateCode = rawState.toUpperCase();
+          else stateCode = STATE_NAME_TO_CODE[rawState.toLowerCase()] || rawState.toUpperCase();
+        }
+        var rawAge = (get('age') || '').toString().trim();
+        var age = rawAge && !isNaN(Number(rawAge)) ? Number(rawAge) : null;
+        var gender = (get('gender') || '').toString().trim() || null;
+        var payBand = (get('payBand') || '').toString().trim() || null;
+        var endDate = parseDateFlexible(get('endDate'));
+        var extensionStatus = (get('extensionStatus') || '').toString().trim();
+        var systemAStatus = (get('systemAStatus') || '').toString().trim();
+        var systemBStatus = (get('systemBStatus') || '').toString().trim();
+        var requestReceived = parseDateFlexible(get('requestReceived'));
+        var adCreated = parseDateFlexible(get('adCreated'));
+        var accessGranted = parseDateFlexible(get('accessGranted'));
+        var goLive = parseDateFlexible(get('goLive'));
+        var daysUntilExpiration = endDate ? Math.round((endDate - today) / 86400000) : null;
+        return {
+          id: 'imp-' + idx,
+          name: name,
+          vendor: vendor,
+          state: stateCode,
+          age: age,
+          gender: gender,
+          payBand: payBand,
+          metricModifier: 0,
+          endDate: endDate,
+          daysUntilExpiration: daysUntilExpiration,
+          extensionStatus: extensionStatus,
+          requestReceived: requestReceived,
+          adCreated: adCreated,
+          accessGranted: accessGranted,
+          goLive: goLive,
+          systemAStatus: systemAStatus,
+          systemBStatus: systemBStatus,
+          discrepancyType: null,
+          flaggedDate: null,
+          status: 'Active'
+        };
+      });
+      state.contractors = contractors;
+      // CSV/JSON import has no monthly-trend columns; keep whatever SLA/turnover
+      // trend is already loaded instead of wiping it, so Finding 4 stays populated.
+      state.source = 'imported';
+      state.syncStatus = sb ? 'syncing' : 'offline';
+      state.radarSort = { key:'daysUntilExpiration', dir:'asc' };
+      state.filters = { state: null, bucket: null, month: null, ageBucket: null, gender: null, payBand: null, tenureBucket: null, funnelStage: null, renewalStatus: null, discType: null };
+      closeMappingModal();
+      renderAll();
+      if(sb){
+        var ok = await syncToSupabase(state.contractors, state.slaTrend, 'imported');
+        state.syncStatus = ok ? 'synced' : 'error';
+        updateSourceLabel();
+      }
+    }catch(err){
+      var eb = document.getElementById('mappingError');
+      if(eb){
+        eb.textContent = 'Something went wrong applying the mapping: ' + (err && err.message ? err.message : 'unknown error') + '.';
+        eb.hidden = false;
+      }
+    }
+  }
+
+  async function onReset(){
+    try{
+      var demo = genDemoData();
+      state.contractors = demo.contractors;
+      state.slaTrend = demo.slaTrend;
+      state.source = 'demo';
+      state.syncStatus = sb ? 'syncing' : 'offline';
+      state.radarSort = { key:'daysUntilExpiration', dir:'asc' };
+      state.filters = { state: null, bucket: null, month: null, ageBucket: null, gender: null, payBand: null, tenureBucket: null, funnelStage: null, renewalStatus: null, discType: null };
+      clearImportError();
+      renderAll();
+      if(sb){
+        var ok = await syncToSupabase(state.contractors, state.slaTrend, 'demo');
+        state.syncStatus = ok ? 'synced' : 'error';
+        updateSourceLabel();
+      }
+    }catch(err){
+      showImportError('Could not reset to demo data.');
+    }
+  }
+
+  async function bootstrapData(){
+    if(sb){
+      state.syncStatus = 'loading';
+      renderAll();
+      var loaded = await loadFromSupabase();
+      if(loaded && loaded.contractors.length){
+        state.contractors = loaded.contractors;
+        state.slaTrend = loaded.slaTrend;
+        state.source = loaded.source === 'imported' ? 'imported' : 'demo';
+        state.syncStatus = 'synced';
+        renderAll();
+        return;
+      }
+    }
+    await onReset();
+  }
+
+  /* ============================================================
+     WIRE UP
+  ============================================================ */
+  async function init(){
+    initTooltip();
+    initCrossFilterClicks();
+    document.getElementById('btnImport').addEventListener('click', function(){
+      document.getElementById('fileInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', function(){
+      var f = this.files && this.files[0];
+      this.value = '';
+      if(!f) return;
+      handleFile(f);
+    });
+    document.getElementById('btnReset').addEventListener('click', onReset);
+    document.getElementById('mappingClose').addEventListener('click', closeMappingModal);
+    document.getElementById('mappingCancel').addEventListener('click', closeMappingModal);
+    document.getElementById('mappingConfirm').addEventListener('click', onConfirmMapping);
+    document.getElementById('mappingModal').addEventListener('click', function(e){
+      if(e.target === this) closeMappingModal();
+    });
+    bootstrapData();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
