@@ -1,7 +1,7 @@
 """
 Cohort Retention Report
 -----------------------
-Creates a SQLite DB with fake users + events, then runs a CTE/window-function
+Creates a SQLite DB with fake users + events, then runs a CTE-based
 query that calculates monthly cohort retention %.
 Outputs: retention_report.csv and retention_report.md
 """
