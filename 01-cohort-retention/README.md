@@ -1,6 +1,6 @@
 # 01 — SQL Cohort Retention Report
 
-**What it does:** Seeds a local SQLite database with 1 200 fake users across six monthly cohorts (Jan–Jun 2024), generates synthetic activity events, then runs a single CTE + window-function SQL query to compute month-over-month retention % per cohort. Outputs both a raw CSV and a pivot-table Markdown report.
+**What it does:** Seeds a local SQLite database with 1 200 fake users across six monthly cohorts (Jan–Jun 2024), generates synthetic activity events, then runs a single multi-step CTE SQL query to compute month-over-month retention % per cohort. Outputs both a raw CSV and a pivot-table Markdown report.
 
 ## Key techniques
 
