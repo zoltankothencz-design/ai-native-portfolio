@@ -1,0 +1,7 @@
+channel,registered,kyc_passed,ftd,second_deposit,reg_to_kyc_pct,kyc_to_ftd_pct,ftd_to_second_pct,reg_to_ftd_pct,dropoff_reg_to_kyc,dropoff_kyc_to_ftd,dropoff_ftd_to_second
+crm_email,307,257,170,102,83.7,66.1,60.0,55.4,50,87,68
+affiliate_a,505,397,225,137,78.6,56.7,60.9,44.6,108,172,88
+organic,508,388,215,106,76.4,55.4,49.3,42.3,120,173,109
+affiliate_c,297,201,113,60,67.7,56.2,53.1,38.0,96,88,53
+affiliate_b,383,248,110,47,64.8,44.4,42.7,28.7,135,138,63
+ALL,2000,1491,833,452,74.5,55.9,54.3,41.6,509,658,381
