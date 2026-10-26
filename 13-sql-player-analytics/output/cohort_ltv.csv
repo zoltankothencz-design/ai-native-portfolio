@@ -1,4 +1,4 @@
-cohort_month,cohort_size,month_offset,month_ngr,cumulative_ngr_per_player
+cohort_month,cohort_size,month_offset,month_ggr,cumulative_ggr_per_player
 2024-01,334,0,10045.57,30.08
 2024-01,334,1,12029.53,66.09
 2024-01,334,2,4621.77,79.93

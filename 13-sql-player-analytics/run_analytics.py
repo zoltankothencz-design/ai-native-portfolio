@@ -170,7 +170,7 @@ def ltv_pivot(headers, rows):
     sizes, cells = {}, {}
     for r in rows:
         sizes[r[ix["cohort_month"]]] = r[ix["cohort_size"]]
-        cells[(r[ix["cohort_month"]], r[ix["month_offset"]])] = r[ix["cumulative_ngr_per_player"]]
+        cells[(r[ix["cohort_month"]], r[ix["month_offset"]])] = r[ix["cumulative_ggr_per_player"]]
     offsets = sorted({k[1] for k in cells})
     head = ["Cohort", "Size"] + ["M+%d" % o for o in offsets]
     body = [[c, sizes[c]] + ["%.2f" % cells[(c, o)] for o in offsets] for c in sorted(sizes)]
@@ -190,20 +190,20 @@ def write_reports(results):
     sample_pid = next(p for p in sorted(by_player) if len(by_player[p]) >= 4)
 
     md = ["# Player Analytics Report", "",
-          "Synthetic data. NGR = stake - win (no bonus cost, no taxes).", ""]
+          "Synthetic data. GGR = stake - win (gross: no bonus cost, taxes or fees, so not NGR).", ""]
     md += ["## 1. Funnel by channel", "", md_table(*results["funnel_by_channel"]), ""]
     md += ["## 1b. KYC passed, never deposited (CRM reactivation list)", "",
            md_table(*results["kyc_no_deposit_by_channel"]), ""]
     md += ["## 2a. Average days between consecutive deposits", "",
            md_table(*results["deposit_gap_by_channel"]), ""]
-    md += ["## 2b. Top 3 players per cohort by NGR", "",
+    md += ["## 2b. Top 3 players per cohort by GGR", "",
            md_table(*results["top3_players_per_cohort"]), ""]
-    md += ["## 2c. NGR deciles (1 = top 10 percent of players)", "",
-           md_table(*results["ngr_deciles"]), ""]
+    md += ["## 2c. GGR deciles (1 = top 10 percent of players)", "",
+           md_table(*results["ggr_deciles"]), ""]
     md += ["## 2d. Running deposit total (sample: player %d)" % sample_pid, "",
            md_table(h, by_player[sample_pid]), ""]
     lh, lrows = results["cohort_ltv"]
-    md += ["## 3. Cohort LTV: cumulative NGR per player by month since registration", "",
+    md += ["## 3. Cohort LTV: cumulative GGR per player by month since registration", "",
            md_table(*ltv_pivot(lh, lrows)), ""]
     md += ["_Generated from synthetic data. No real player data._", ""]
     (OUT_DIR / "player_analytics_report.md").write_text("\n".join(md), encoding="utf-8")

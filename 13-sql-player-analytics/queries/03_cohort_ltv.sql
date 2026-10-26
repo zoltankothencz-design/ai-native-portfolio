@@ -1,10 +1,10 @@
 -- 03_cohort_ltv.sql
--- Business question: how much cumulative NGR does an average player of each
+-- Business question: how much cumulative GGR does an average player of each
 -- registration-month cohort generate by month since registration (simplified LTV)?
 -- Techniques: window SUM over months, CROSS JOIN month grid + LEFT JOIN so months
 -- without gaming still appear, division by cohort size (all registered players, not
 -- only the active ones).
--- NGR is simplified: stake - win. No bonus cost, no taxes, no fees.
+-- GGR = stake - win. Gross: no bonus cost, taxes or fees are subtracted, so it is not NGR.
 -- Month offset 0 is the registration month. Offsets 0 to 5 are complete for all cohorts.
 
 -- @query: cohort_ltv
@@ -24,12 +24,12 @@ cohort_sizes AS (
 months(month_offset) AS (
     VALUES (0), (1), (2), (3), (4), (5)
 ),
-monthly_ngr AS (
+monthly_ggr AS (
     SELECT
         cp.cohort_month,
         (CAST(strftime('%Y', g.played_at) AS INTEGER) * 12
            + CAST(strftime('%m', g.played_at) AS INTEGER)) - cp.reg_month_index AS month_offset,
-        SUM(g.stake - g.win) AS ngr
+        SUM(g.stake - g.win) AS ggr
     FROM gaming_results g
     JOIN cohort_players cp ON cp.player_id = g.player_id
     GROUP BY cp.cohort_month, month_offset
@@ -39,10 +39,10 @@ grid AS (
         cs.cohort_month,
         cs.cohort_size,
         m.month_offset,
-        COALESCE(mn.ngr, 0) AS ngr
+        COALESCE(mn.ggr, 0) AS ggr
     FROM cohort_sizes cs
     CROSS JOIN months m
-    LEFT JOIN monthly_ngr mn
+    LEFT JOIN monthly_ggr mn
            ON mn.cohort_month = cs.cohort_month
           AND mn.month_offset = m.month_offset
 )
@@ -50,11 +50,11 @@ SELECT
     cohort_month,
     cohort_size,
     month_offset,
-    ROUND(ngr, 2) AS month_ngr,
-    ROUND(SUM(ngr) OVER (
+    ROUND(ggr, 2) AS month_ggr,
+    ROUND(SUM(ggr) OVER (
               PARTITION BY cohort_month
               ORDER BY month_offset
               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) / cohort_size, 2)
-        AS cumulative_ngr_per_player
+        AS cumulative_ggr_per_player
 FROM grid
 ORDER BY cohort_month, month_offset;

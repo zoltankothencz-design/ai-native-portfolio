@@ -1,6 +1,6 @@
 # Player Analytics Report
 
-Synthetic data. NGR = stake - win (no bonus cost, no taxes).
+Synthetic data. GGR = stake - win (gross: no bonus cost, taxes or fees, so not NGR).
 
 ## 1. Funnel by channel
 
@@ -33,9 +33,9 @@ Synthetic data. NGR = stake - win (no bonus cost, no taxes).
 | organic     | 249           | 14.1         |
 | affiliate_c | 127           | 14.9         |
 
-## 2b. Top 3 players per cohort by NGR
+## 2b. Top 3 players per cohort by GGR
 
-| cohort_month | rank_in_cohort | player_id | channel     | ngr     |
+| cohort_month | rank_in_cohort | player_id | channel     | ggr     |
 | ------------ | -------------- | --------- | ----------- | ------- |
 | 2024-01      | 1              | 270       | affiliate_a | 5251.15 |
 | 2024-01      | 2              | 39        | organic     | 2883.21 |
@@ -56,9 +56,9 @@ Synthetic data. NGR = stake - win (no bonus cost, no taxes).
 | 2024-06      | 2              | 1704      | crm_email   | 1075.15 |
 | 2024-06      | 3              | 1703      | affiliate_a | 1012.74 |
 
-## 2c. NGR deciles (1 = top 10 percent of players)
+## 2c. GGR deciles (1 = top 10 percent of players)
 
-| decile | players | total_ngr | avg_ngr | share_of_total_ngr_pct |
+| decile | players | total_ggr | avg_ggr | share_of_total_ggr_pct |
 | ------ | ------- | --------- | ------- | ---------------------- |
 | 1      | 84      | 95438.95  | 1136.18 | 85.7                   |
 | 2      | 84      | 28381.68  | 337.88  | 25.5                   |
@@ -80,7 +80,7 @@ Synthetic data. NGR = stake - win (no bonus cost, no taxes).
 | 4         | 3           | 2024-03-06   | 90.0   | 270.0                 |
 | 4         | 4           | 2024-03-14   | 30.0   | 300.0                 |
 
-## 3. Cohort LTV: cumulative NGR per player by month since registration
+## 3. Cohort LTV: cumulative GGR per player by month since registration
 
 | Cohort  | Size | M+0   | M+1   | M+2   | M+3   | M+4   | M+5   |
 | ------- | ---- | ----- | ----- | ----- | ----- | ----- | ----- |

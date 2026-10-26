@@ -9,9 +9,9 @@ Every technique below is checked by `test_queries.py`: the test fails if one of 
 - `LEFT JOIN` keeps players who never deposited (funnel), and the anti-join pattern (`LEFT JOIN ... WHERE right.id IS NULL`) builds the KYC-passed-but-never-deposited list.
 - `CASE WHEN` inside `COUNT(DISTINCT ...)` is the conditional aggregation that counts every funnel step in a single pass per channel.
 - `LAG` returns the previous deposit date of the same player, giving the days between consecutive deposits.
-- `ROW_NUMBER` ranks players inside each cohort (top 3 by NGR) and numbers each player's deposits.
-- `NTILE` splits players into 10 NGR value tiers (deciles).
-- `OVER` with `PARTITION BY` drives the window queries: running deposit total per player, cumulative NGR per cohort, and the decile share of total NGR.
+- `ROW_NUMBER` ranks players inside each cohort (top 3 by GGR) and numbers each player's deposits.
+- `NTILE` splits players into 10 GGR value tiers (deciles).
+- `OVER` with `PARTITION BY` drives the window queries: running deposit total per player, cumulative GGR per cohort, and the decile share of total GGR.
 - CTEs, a `CROSS JOIN` month grid and `UNION ALL` (total row) keep the queries readable.
 
 ## Queries
@@ -19,10 +19,10 @@ Every technique below is checked by `test_queries.py`: the test fails if one of 
 | File | Business question for CRM / affiliate teams | Output |
 |---|---|---|
 | `queries/01_funnel_by_channel.sql` | Where does each channel lose players between registration, KYC, first deposit (FTD) and second deposit? How many KYC-passed players never deposited (the reactivation list)? | `funnel_by_channel.csv`, `kyc_no_deposit_by_channel.csv` |
-| `queries/02_window_functions.sql` | How fast do players re-deposit per channel (`LAG`)? Who are the top 3 players per cohort (`ROW_NUMBER`)? How concentrated is NGR (`NTILE` deciles)? When does a player cross a deposit threshold (running total)? | `deposit_gap_by_channel.csv`, `top3_players_per_cohort.csv`, `ngr_deciles.csv`, `running_deposit_total.csv` |
-| `queries/03_cohort_ltv.sql` | How much cumulative NGR does an average player of each registration-month cohort bring by month since registration? | `cohort_ltv.csv` (pivot in the Markdown report) |
+| `queries/02_window_functions.sql` | How fast do players re-deposit per channel (`LAG`)? Who are the top 3 players per cohort (`ROW_NUMBER`)? How concentrated is GGR (`NTILE` deciles)? When does a player cross a deposit threshold (running total)? | `deposit_gap_by_channel.csv`, `top3_players_per_cohort.csv`, `ggr_deciles.csv`, `running_deposit_total.csv` |
+| `queries/03_cohort_ltv.sql` | How much cumulative GGR does an average player of each registration-month cohort bring by month since registration? | `cohort_ltv.csv` (pivot in the Markdown report) |
 
-NGR here is **simplified: NGR = stake - win**. There is no bonus cost, no taxes, no fees.
+The revenue measure here is **GGR = stake - win** (gross gaming revenue). It is gross: NGR would also subtract bonus cost, taxes and fees, and none of that is modelled.
 
 ## How to run
 
@@ -71,13 +71,13 @@ In this data `crm_email` converts best and `affiliate_b` worst (28.7 % registrat
 | organic     | 249           | 14.1         |
 | affiliate_c | 127           | 14.9         |
 
-### Top 3 players per cohort by NGR (`ROW_NUMBER`)
+### Top 3 players per cohort by GGR (`ROW_NUMBER`)
 
-18 rows (3 per cohort), see `output/player_analytics_report.md`. Ties on NGR are broken by `player_id`.
+18 rows (3 per cohort), see `output/player_analytics_report.md`. Ties on GGR are broken by `player_id`.
 
-### NGR deciles (`NTILE`, decile 1 = top 10 % of players)
+### GGR deciles (`NTILE`, decile 1 = top 10 % of players)
 
-| decile | players | total_ngr | avg_ngr | share_of_total_ngr_pct |
+| decile | players | total_ggr | avg_ggr | share_of_total_ggr_pct |
 | ------ | ------- | --------- | ------- | ---------------------- |
 | 1      | 84      | 95438.95  | 1136.18 | 85.7                   |
 | 2      | 84      | 28381.68  | 337.88  | 25.5                   |
@@ -90,7 +90,7 @@ In this data `crm_email` converts best and `affiliate_b` worst (28.7 % registrat
 | 9      | 83      | -6677.34  | -80.45  | -6.0                   |
 | 10     | 83      | -34724.32 | -418.37 | -31.2                  |
 
-The top decile holds 85.7 % of total NGR and the bottom decile is net negative (-31.2 %), because those players won more than they lost. That is a property of the synthetic win distribution, not a benchmark.
+The top decile holds 85.7 % of total GGR and the bottom decile is net negative (-31.2 %), because those players won more than they lost. That is a property of the synthetic win distribution, not a benchmark.
 
 ### Running deposit total (`SUM() OVER`), one sample player
 
@@ -101,9 +101,9 @@ The top decile holds 85.7 % of total NGR and the bottom decile is net negative (
 | 4         | 3           | 2024-03-06   | 90.0   | 270.0                 |
 | 4         | 4           | 2024-03-14   | 30.0   | 300.0                 |
 
-### Cohort LTV: cumulative NGR per player by month since registration
+### Cohort LTV: cumulative GGR per player by month since registration
 
-Cumulative NGR of the cohort up to that month divided by the cohort size (all registered players, including those who never deposited). M+0 is the registration month. Offsets 0 to 5 are complete for every cohort because the data ends on 2024-12-31.
+Cumulative GGR of the cohort up to that month divided by the cohort size (all registered players, including those who never deposited). M+0 is the registration month. Offsets 0 to 5 are complete for every cohort because the data ends on 2024-12-31.
 
 | Cohort  | Size | M+0   | M+1   | M+2   | M+3   | M+4   | M+5   |
 | ------- | ---- | ----- | ----- | ----- | ----- | ----- | ----- |
@@ -114,12 +114,12 @@ Cumulative NGR of the cohort up to that month divided by the cohort size (all re
 | 2024-05 | 333  | 12.32 | 35.64 | 40.91 | 48.03 | 47.90 | 47.89 |
 | 2024-06 | 333  | 3.45  | 34.24 | 38.82 | 40.36 | 40.14 | 40.46 |
 
-A cumulative value can dip slightly (see 2024-02, M+4) when a month has net negative NGR.
+A cumulative value can dip slightly (see 2024-02, M+4) when a month has net negative GGR.
 
 ## Limitations
 
 - All data is synthetic and generated from simple probabilities. Funnel rates, deposit sizes and win distributions are chosen by me, not measured. Differences between cohorts are random noise from a few heavy-tail players, not a trend.
-- NGR is simplified (stake - win). Real NGR also subtracts bonus cost, taxes and fees; none of that is modelled.
+- The revenue figures are GGR (stake - win), not NGR. Bonus cost, taxes and fees are not modelled, so a real NGR would be lower.
 - There are no real tracking events: no clicks, sessions, affiliate postbacks, bonus grants, withdrawals or chargebacks. The funnel starts at registration, not at a landing page or click.
 - Gaming results are a few session rows per deposit, not individual bets or game rounds.
 - KYC is a single date per player, and the generator only lets KYC-passed players deposit, so the funnel is nested by construction.

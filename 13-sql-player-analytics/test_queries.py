@@ -81,28 +81,28 @@ def month_index(iso):
 
 def test_cohort_ltv_matches_python(con, results):
     reg = {pid: m for pid, m in con.execute("SELECT player_id, registered_at FROM players")}
-    size, ngr = {}, {}
+    size, ggr = {}, {}
     for d in reg.values():
         size[d[:7]] = size.get(d[:7], 0) + 1
     for pid, played, stake, win in con.execute(
             "SELECT player_id, played_at, stake, win FROM gaming_results"):
         cohort = reg[pid][:7]
         offset = month_index(played) - month_index(reg[pid])
-        ngr[(cohort, offset)] = ngr.get((cohort, offset), 0.0) + (stake - win)
+        ggr[(cohort, offset)] = ggr.get((cohort, offset), 0.0) + (stake - win)
     headers, rows = results["cohort_ltv"]
     ix = {h: i for i, h in enumerate(headers)}
     assert len(rows) == len(size) * 6
     for cohort in size:
         cumulative = 0.0
         for offset in range(6):
-            cumulative += ngr.get((cohort, offset), 0.0)
+            cumulative += ggr.get((cohort, offset), 0.0)
             expected = cumulative / size[cohort]
             row = [r for r in rows if r[ix["cohort_month"]] == cohort
                    and r[ix["month_offset"]] == offset][0]
             assert row[ix["cohort_size"]] == size[cohort]
-            assert abs(row[ix["cumulative_ngr_per_player"]] - expected) <= TOLERANCE, \
+            assert abs(row[ix["cumulative_ggr_per_player"]] - expected) <= TOLERANCE, \
                 "LTV mismatch %s M+%d: %r vs %r" % (
-                    cohort, offset, row[ix["cumulative_ngr_per_player"]], expected)
+                    cohort, offset, row[ix["cumulative_ggr_per_player"]], expected)
 
 
 def test_running_total_last_value(con, results):
@@ -120,12 +120,12 @@ def test_running_total_last_value(con, results):
 
 def test_other_window_queries(con, results):
     # deciles: all ranked players are covered, sizes differ by at most one, shares sum to 100
-    _, rows = results["ngr_deciles"]
+    _, rows = results["ggr_deciles"]
     n = con.execute("SELECT COUNT(DISTINCT player_id) FROM gaming_results").fetchone()[0]
     assert sum(r[1] for r in rows) == n and len(rows) == 10
     assert max(r[1] for r in rows) - min(r[1] for r in rows) <= 1
     assert abs(sum(r[4] for r in rows) - 100.0) <= 0.2
-    # top 3: exactly three per cohort, NGR non-increasing
+    # top 3: exactly three per cohort, GGR non-increasing
     _, rows = results["top3_players_per_cohort"]
     by_cohort = {}
     for cohort, rank, _pid, _ch, value in rows:
