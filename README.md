@@ -1,10 +1,11 @@
 # AI-native Portfolio Demo Projects
 
-Thirteen self-contained demo projects built with Claude Code and other AI tools, on synthetic or mock data (one exception noted below). They cover the work I do around reporting, retention analytics and automation, with a focus on iGaming.
+Fourteen self-contained demo projects built with Claude Code and other AI tools, on synthetic or mock data (one exception noted below). They cover the work I do around reporting, retention analytics and automation, with a focus on iGaming.
 Each project lives in its own subdirectory with a README and, where applicable, runnable code.
 
 ## Start here for iGaming CRM, retention and reporting
 
+- [14 A/B Test: Reactivation Bonus Email](14-ab-test-bonus-email/): a complete experiment, from sample size and hash-based randomisation in SQL to the SRM check, bootstrap intervals, a bonus-cost value metric and a pre-set decision rule.
 - [13 SQL Player Analytics](13-sql-player-analytics/): funnel by channel, window functions, LEFT JOIN anti-join and cohort LTV, in SQL on SQLite.
 - [01 SQL Cohort Retention Report](01-cohort-retention/): month-over-month player retention per signup cohort, in SQL (CTEs, joins, distinct counts).
 - [10 iGaming Operations Report](10-powerbi-igaming-report/): GGR/NGR, RTP, bonus cost and player geography in Power BI.
@@ -29,6 +30,7 @@ Each project lives in its own subdirectory with a README and, where applicable, 
 | 11 | [Zara Sales & Merchandising Analysis](11-powerbi-zara-sales/) | Power BI, DAX | Retail pricing, promotion, and placement analysis |
 | 12 | [HR Analytics Dashboard](12-powerbi-hr-analytics/) | Power BI, DAX | Workforce, salary, and fluctuation-risk analytics |
 | 13 | [SQL Player Analytics](13-sql-player-analytics/) | Python, SQLite | Funnel, window functions, LEFT JOIN, cohort LTV |
+| 14 | [A/B Test: Reactivation Bonus Email](14-ab-test-bonus-email/) | Python, SQLite | Sample size, SQL randomisation, SRM check, bootstrap CI, decision rule |
 
 ## Quick start
 

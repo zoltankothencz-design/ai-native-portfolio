@@ -1,0 +1,5 @@
+step,stage,players,removed
+1,"candidates (KYC passed, 3 days ago)",11000,0
+2,after: not deposited before,9904,1096
+3,after: no responsible-gaming flag,9590,314
+4,after: email consent = ELIGIBLE,8186,1404
