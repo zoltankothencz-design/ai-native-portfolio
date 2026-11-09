@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="250" viewBox="0 0 720 250" font-family="Arial, sans-serif" font-size="13">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20" y="28" font-weight="bold">Conversion within 7 days (95% CI)</text>
+<text x="20" y="84">A control</text>
+<line x1="147.9" y1="80" x2="217.0" y2="80" stroke="#6b7280" stroke-width="3"/>
+<circle cx="182.4" cy="80" r="6" fill="#6b7280"/>
+<text x="182.4" y="68" text-anchor="middle">9.89%</text>
+<text x="20" y="144">B bonus</text>
+<line x1="217.1" y1="140" x2="292.1" y2="140" stroke="#2563eb" stroke-width="3"/>
+<circle cx="254.6" cy="140" r="6" fill="#2563eb"/>
+<text x="254.6" y="128" text-anchor="middle">11.79%</text>
+<text x="20" y="232" fill="#444">Lift +1.91 pp (95% CI +0.56 pp to +3.25 pp), p = 0.0056</text>
+<text x="400" y="28" font-weight="bold">Net value per player, B minus A (98.3% CI)</text>
+<line x1="687.8" y1="55" x2="687.8" y2="170" stroke="#999" stroke-dasharray="4 3"/>
+<text x="687.8" y="186" text-anchor="middle" fill="#666">0</text>
+<line x1="432.2" y1="110" x2="646.4" y2="110" stroke="#dc2626" stroke-width="3"/>
+<circle cx="541.9" cy="110" r="6" fill="#dc2626"/>
+<text x="541.9" y="94" text-anchor="middle">-5.96</text>
+<text x="400" y="232" fill="#444">CI -10.45 to -1.69 (synthetic EUR per eligible player)</text>
+</svg>

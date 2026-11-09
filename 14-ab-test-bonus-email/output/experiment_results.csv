@@ -1,0 +1,5 @@
+metric,role,a_control,b_bonus,diff_b_minus_a,confidence_interval,p_value
+conversion within 7 days,primary,9.89%,11.79%,+1.91 pp,+0.56 pp to +3.25 pp (95%),0.0056
+first-deposit amount per player,secondary,12.87,13.14,+0.27,-2.81 to +3.23 (98.3%),bootstrap
+net value per player (GGR 14d - bonus),secondary,6.07,0.11,-5.96,-10.45 to -1.69 (98.3%),bootstrap
+unsubscribe within 7 days,guardrail,0.92%,1.13%,+0.21 pp,-0.33 pp to +0.74 pp (98.3%),0.3528
